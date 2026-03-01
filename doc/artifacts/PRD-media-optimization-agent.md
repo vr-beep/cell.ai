@@ -332,7 +332,235 @@ These were explicitly identified during the team meeting as blockers requiring i
 
 ---
 
-# 10. PRD Review — Critical Assessment
+# 10. Eval Framework — Pre-Hack Validation
+
+The NSM framework (Section 9) defines what success looks like on March 15. This section defines how we know the system works on March 13 — before we touch real cells, real robots, or real reagents.
+
+**Principle:** Every eval tests a specific failure mode that would kill the demo. If an eval doesn't map to a demo-killing failure, cut it.
+
+---
+
+## 10.1 Eval Categories (Priority Order)
+
+### E1. Interface Contract Tests — "Do the pieces fit together?"
+
+**Failure mode:** LLM output doesn't parse into BayBE input. BayBE output doesn't map to MCP commands. Plate reader output doesn't feed back into BayBE. The system works component-by-component but crashes at the seams.
+
+**Method:**
+- Generate 50 LLM recipes using the actual prompt and 10 different cell types.
+- Feed each through the exact parser that BayBE will consume.
+- Feed BayBE's output through the exact formatter that produces MCP commands.
+- Feed simulated plate reader CSV through the exact parser that returns results to BayBE.
+
+**Pass criteria:**
+- 100% of LLM outputs parse without error into valid BayBE search points.
+- Every component name in LLM output maps to a component in BayBE's search space definition.
+- Every concentration is a numeric value within the defined search bounds.
+- Every BayBE suggestion produces a valid MCP command payload.
+- Plate reader CSV parser handles: empty wells, negative values, missing rows, extra header lines.
+
+**Time budget:** 2 hours to build, 5 minutes to run.
+
+---
+
+### E2. Noisy Convergence — "Does BayBE actually learn on realistic data?"
+
+**Failure mode:** BayBE converges beautifully on a clean synthetic function, then falls apart when real biological noise enters the picture.
+
+**Method:**
+Build a biologically realistic synthetic objective:
+- 4-5 media components with non-linear dose-response curves
+- Interaction effects between components (e.g., glutamine × glucose)
+- Toxicity cliffs above realistic thresholds
+- 20% coefficient of variation (lognormal noise on every measurement)
+- 5% outlier rate (garbage reads from bubbles, edge effects)
+
+Run BayBE against this function for 3 rounds of 12 compositions each. Repeat 100 times with different random seeds.
+
+**Pass criteria:**
+- In ≥80 of 100 runs, the best composition in round 3 is within 30% of the true optimum.
+- In ≥90 of 100 runs, best OD improves from round 1 to round 3.
+- Mean number of rounds to find a composition >2× basal equivalent: ≤2.
+
+**Fail investigation:** If <80% convergence, check:
+- Is the search space too wide? Narrow concentration ranges.
+- Is BayBE's kernel appropriate for the noise level?
+- Are outliers poisoning the surrogate model? Add outlier filtering.
+
+**Time budget:** 3 hours to build (most time on the synthetic function), 10 minutes to run 100 trials.
+
+---
+
+### E3. Stateful MCP Mock — "Does the agent handle real robot behavior?"
+
+**Failure mode:** The mock MCP returns instant JSON responses. The real MCP has latency, state requirements, transient failures, and CSV output.
+
+**Method:**
+Build a mock that enforces:
+- **State machine:** plate must be in the correct location for each operation (handler → incubator → reader). Out-of-order commands return errors.
+- **Realistic latency:** 5-30s per command (randomized).
+- **Transient failures:** 5% of commands return retriable errors.
+- **Realistic output format:** plate reader returns CSV with headers, not clean JSON.
+
+Run the full agent loop (LLM → BayBE → MCP → parse → BayBE) against this mock for 2 rounds.
+
+**Pass criteria:**
+- Agent completes 2 full rounds without crashing.
+- Agent retries transient MCP failures (≤3 retries) before alerting.
+- Agent correctly sequences commands (never sends plate_read before incubate completes).
+- Agent parses CSV plate reader output into the correct data structure.
+- Total non-incubation overhead per round: <30 minutes wall-clock.
+
+**Time budget:** 3 hours to build, 15 minutes to run.
+
+---
+
+### E4. Decision Quality — "Does the agent make reasonable choices on weird data?"
+
+**Failure mode:** The agent gets ambiguous or broken data and makes a catastrophic next move — doubling down on an outlier, panicking on flat results, or crashing on missing data.
+
+**Method:**
+Inject specific data scenarios after round 1 and verify the agent's round 2 proposal is reasonable:
+
+| Scenario | Injected data | Expected behavior |
+|---|---|---|
+| Flat signal | All 12 compositions: OD 0.30 ± 0.02 | Increase exploration diversity; do not converge |
+| Single outlier | 11 compositions: OD 0.3, one: OD 1.8 | Include 2-3 compositions near the outlier + diverse exploration; not all-in |
+| Regression | All round 2 ODs worse than round 1 | Explore new region of search space; do not re-propose round 2 compositions |
+| Negative values | 3 wells return OD -0.05 | Exclude negatives from optimization; do not crash |
+| Missing data | 3 of 12 wells return NaN/empty | Exclude missing wells; optimize on remaining 9 |
+| All wells excellent | All 12 compositions: OD > 1.0 | Narrow search around top 3-4; exploitation mode |
+
+**Pass criteria:**
+- Agent does not crash on any scenario.
+- Agent's round 2 proposal is reviewed by a team member and judged "reasonable" for each scenario. (Manual review is acceptable — this is a judgment call, not an automated metric.)
+
+**Time budget:** 2 hours to build scenarios, 30 minutes to review outputs.
+
+---
+
+### E5. End-to-End Timing — "Can we finish in time?"
+
+**Failure mode:** Non-incubation overhead (recipe generation, MCP commands, data parsing, optimization) eats into the limited hackathon hours and costs us a round.
+
+**Method:**
+Run the full pipeline against the stateful MCP mock (E3) for 3 rounds. Measure wall-clock time for each step:
+
+| Step | Budget |
+|---|---|
+| LLM recipe generation | < 30 seconds |
+| BayBE batch generation | < 60 seconds |
+| MCP command execution (all 12 compositions) | < 15 minutes |
+| Plate reader parse + data formatting | < 60 seconds |
+| BayBE update + next batch proposal | < 60 seconds |
+| **Total non-incubation overhead per round** | **< 20 minutes** |
+
+**Pass criteria:**
+- Total overhead per round < 20 minutes (gives 10-minute buffer before the 30-minute concern threshold).
+- No single step takes >2× its budget.
+
+**Time budget:** 0 hours incremental (uses E3 mock; just add timing instrumentation).
+
+---
+
+### E6. Graceful Degradation — "What happens when something dies?"
+
+**Failure mode:** One component fails completely, and the entire system crashes instead of entering a degraded mode.
+
+**Method:**
+For each component, simulate total failure and verify fallback:
+
+| Component down | Expected fallback |
+|---|---|
+| LLM API unreachable | Use cached default recipe (DMEM + 10% FBS + standard supplements) |
+| BayBE throws exception | Fall back to Latin Hypercube sampling (random-but-space-filling) |
+| MCP unreachable for >5 min | Alert human operator; queue commands for retry; log state for manual execution |
+| Plate reader returns empty | Alert human operator; do not feed empty data to BayBE |
+
+**Pass criteria:**
+- Agent does not crash on any total-failure scenario.
+- Agent enters the defined fallback mode within 60 seconds of failure.
+- Agent logs a clear, human-readable alert for each failure.
+
+**Prerequisite:** Define the fallback behaviors in code BEFORE writing this eval. If fallbacks don't exist, this eval will fail by definition — which is the point.
+
+**Time budget:** 1 hour to build, 10 minutes to run.
+
+---
+
+### E7. LLM Recipe Quality — "Is the starting point sane?"
+
+**Failure mode:** The LLM hallucinates a media recipe with toxic concentrations, imaginary components, or nonsensical ratios.
+
+**Method:**
+- Generate recipes for 10 well-known cell lines (HEK293, CHO, HeLa, Jurkat, A549, MCF-7, iPSC, MSC, Vero, NIH/3T3).
+- Compare each recipe against published protocols from ATCC / cell line provider datasheets.
+
+**Pass criteria:**
+- ≥60% of suggested components match published protocol components.
+- No concentration exceeds 10× the published recommended range.
+- No recipe contains components absent from a curated "real supplement" list (catches hallucinated reagent names).
+
+**Why this is lowest priority:** Biological errors in round 1 are caught by the scientist reviewing the recipe morning-of. A bad LLM recipe wastes one round but doesn't crash the system. Interface bugs and MCP failures crash the system.
+
+**Time budget:** 1 hour to build, 5 minutes to run.
+
+---
+
+## 10.2 Eval Validation — "Do the evals themselves work?"
+
+An eval that passes everything is worse than no eval — it gives false confidence. Before trusting the suite:
+
+### Mutation testing (mandatory, 30 minutes)
+
+Inject 5 known bugs into the system. Run the full eval suite. Verify each bug is caught by at least one eval.
+
+| Mutation | Expected to be caught by |
+|---|---|
+| LLM outputs string concentrations ("10%") instead of floats | E1 |
+| BayBE always returns the same 12 compositions regardless of input | E4 |
+| MCP commands sent out of order (plate_read before incubate) | E3 |
+| Double all MCP response latencies | E5 |
+| Plate reader parser returns zeros for all wells | E4, E6 |
+
+**Pass criterion:** All 5 mutations are caught. If any passes through undetected, fix the eval before trusting it.
+
+### Known-good / known-bad sanity check (mandatory, 10 minutes)
+
+- **Known-good:** DMEM + 10% FBS recipe for HEK293 cells. Synthetic function tuned so this is near-optimal. All evals should pass.
+- **Known-bad:** Empty recipe (all concentrations = 0). All content/convergence evals should fail.
+
+If the known-bad input passes any eval, that eval's threshold is too loose.
+
+---
+
+## 10.3 Pre-Hack Eval Schedule
+
+| Day | Eval | Build time | Run time | Owner |
+|---|---|---|---|---|
+| Mar 11 | E1: Interface contracts | 2h | 5 min | TBD |
+| Mar 11 | E2: Noisy convergence | 3h | 10 min | TBD |
+| Mar 12 | E3: Stateful MCP mock | 3h | 15 min | TBD |
+| Mar 12 | E4: Decision quality | 2h | 30 min | TBD |
+| Mar 13 | E5: Timing (uses E3) | 0h | 5 min | TBD |
+| Mar 13 | E6: Graceful degradation | 1h | 10 min | TBD |
+| Mar 13 | E7: LLM recipe quality | 1h | 5 min | TBD |
+| Mar 13 | Mutation testing + sanity | 0.5h | 15 min | TBD |
+| **Total** | | **12.5h** | **~1.5h** | |
+
+Build cost: 12.5 hours across 3 days (Mar 11-13). Run cost: ~1.5 hours for the full suite. Re-run on hack morning after final config: 30 minutes.
+
+---
+
+## 10.4 What We Are NOT Evaluating
+
+- **Biological correctness of results.** We cannot validate whether the optimized recipe is biologically meaningful without real cells. The evals validate that the system operates correctly, not that biology cooperates.
+- **Incubation outcomes.** We cannot simulate cell growth. The synthetic function is a stand-in for testing the optimization loop, not a prediction of real results.
+- **Demo narrative quality.** The story we tell judges is a human problem, not a system problem. No eval for this.
+
+---
+
+# 11. PRD Review — Critical Assessment
 
 ## Red Flags — Things that will hurt on March 14
 
