@@ -1,7 +1,7 @@
 # PRD: AI-Driven Cell Culture Media Optimization Agent
 
 **Project:** 24hr AI Science Cell Culture Hack @ Monomer Bio — Track A
-**Date:** October 25-26, 2025
+**Date:** March 14-15, 2026
 **Author:** Cell.ai team
 **Status:** Draft
 
@@ -55,7 +55,7 @@ An autonomous AI agent that optimizes cell culture media composition in a closed
 
 - The hackathon itself is evidence: Monomer Bio, Opentrons, and multiple AI partners have organized a sold-out 50-builder event specifically around this problem space, signaling industry urgency.
 
-> **Hackathon page:** *"Rethink cell development. Onboarding a new cell line is notoriously difficult and lab automation is traditionally too intimidating to program and inflexible. We want to change that."*
+> **Hackathon page:** *"For the fifth hack in this series, we're hosting another cell culture hack that brings together the Bay Area's AI, science, and engineering communities. Teams will have access to the latest AI tools for building agents and are given the opportunity to ship on Monomer's robotic workcell and individual walk-up instruments."*
 
 **Customer Impact:**
 
@@ -81,7 +81,7 @@ Given the 24-hour hackathon constraint, success is defined as:
 
 - **Demonstrate measurable improvement** in the target metric (likely optical density as a proxy for cell growth/viability) from round 1 to round 2-3, showing the AI agent learned from prior results.
 
-- **Deliver a working demo** at Sunday 4pm showcase: the agent receives a mystery cell line, autonomously generates an initial media recipe from literature, executes iterative optimization on the robotic work cell, and presents a final "best recipe" with supporting data.
+- **Deliver a working demo** at Sunday 4:30pm showcase: the agent receives a mystery cell line, autonomously generates an initial media recipe from literature, executes iterative optimization on the robotic work cell, and presents a final "best recipe" with supporting data.
 
 - **Stretch goal:** The AI agent converges on a formulation that **outperforms a naive/literature-only baseline** — demonstrating that closed-loop optimization adds value beyond a single LLM literature lookup.
 
@@ -162,14 +162,14 @@ The system has six components wired into an autonomous feedback loop:
 
 # 7. How: What is the experiment plan?
 
-**Phase 1: Pre-hack preparation (before Oct 25)**
+**Phase 1: Pre-hack preparation (before Mar 14)**
 - Build the optimization pipeline: LLM literature agent + BayBE/BoTorch Bayesian optimizer + MCP client for robotic commands.
 - Prepare a cell-type-agnostic framework: when the mystery cell line is revealed, the LLM generates the initial recipe and the optimizer adapts automatically.
 - Confirm with organizers (via Jimmy): what cell type, what plate reader capabilities, what media components are available.
 
 > *"The biggest unknown is actually what components are available, what can we change, what agents do we have to play with — and then the equipment."* — Team member, [25:28]
 
-**Phase 2: Hack day execution (Oct 25, 10am - Oct 26, 3pm)**
+**Phase 2: Hack day execution (Mar 14, 10am - Mar 15, 3pm)**
 - **Hour 0-1:** Cell line revealed. LLM generates initial recipe from literature. Team configures available components and concentration ranges.
 - **Hour 1-2:** Algorithm generates first batch of ~8-12 compositions. Robot mixes and plates.
 - **Hour 2-6:** Incubation round 1 (~4 hours based on expected doubling time). Team monitors.
@@ -182,7 +182,7 @@ The system has six components wired into an autonomous feedback loop:
 >
 > *"Two loops, three maximum. I don't know if somebody would like to stay overnight there."* — Team member, [20:09]
 
-**Phase 3: Demo (Oct 26, 4-5pm)**
+**Phase 3: Demo (Mar 15, 4:30-5:30pm)**
 - Present the full closed-loop story: mystery cell line -> LLM-generated initial recipe -> iterative optimization -> final best formulation, with data showing improvement across rounds.
 
 ---
@@ -192,13 +192,57 @@ The system has six components wired into an autonomous feedback loop:
 | Milestone | Date | Risks | Mitigations |
 |---|---|---|---|
 | **Confirm cell type, plate reader specs, and available media components with organizers** | ASAP (before hack) | Organizers may not respond in time; mystery cell line may not be revealed until morning-of | Reach out to Jimmy via email/LinkedIn now. Build cell-type-agnostic framework so the system works regardless. |
-| **Optimization pipeline built and tested (LLM + BayBE + MCP client)** | Oct 24 (day before hack) | MCP interface may not be documented until event; BayBE integration may have edge cases | Use mock MCP endpoints for pre-testing. Have fallback to manual MCP commands if API integration fails. |
-| **Round 1 complete (first plate read results in)** | Oct 25, ~4pm | Incubation takes longer than expected; plate reader output format unknown | Plan for 4-hour incubation windows. Have parsing scripts ready for common plate reader output formats. |
-| **Round 2 complete (demonstrable learning)** | Oct 25, ~10pm | Cells may not show measurable differences between compositions in one round | Choose a metric (OD) with enough sensitivity. Ensure enough replicates per condition for statistical signal. |
-| **Round 3 complete (stretch goal)** | Oct 26, ~6am | Requires overnight presence; cell viability may degrade | Optional milestone. Even 2 rounds with clear learning is a strong demo. |
-| **Demo-ready** | Oct 26, 3pm (submission deadline) | Dashboard not polished; narrative unclear | Reserve last 3 hours exclusively for demo prep. Prioritize the "story" over the "polish." |
+| **Optimization pipeline built and tested (LLM + BayBE + MCP client)** | Mar 13 (day before hack) | MCP interface may not be documented until event; BayBE integration may have edge cases | Use mock MCP endpoints for pre-testing. Have fallback to manual MCP commands if API integration fails. |
+| **Round 1 complete (first plate read results in)** | Mar 14, ~4pm | Incubation takes longer than expected; plate reader output format unknown | Plan for 4-hour incubation windows. Have parsing scripts ready for common plate reader output formats. |
+| **Round 2 complete (demonstrable learning)** | Mar 14, ~10pm | Cells may not show measurable differences between compositions in one round | Choose a metric (OD) with enough sensitivity. Ensure enough replicates per condition for statistical signal. |
+| **Round 3 complete (stretch goal)** | Mar 15, ~6am | Requires overnight presence; cell viability may degrade | Optional milestone. Even 2 rounds with clear learning is a strong demo. |
+| **Demo-ready** | Mar 15, 3pm (submission deadline) | Dashboard not polished; narrative unclear | Reserve last 3 hours exclusively for demo prep. Prioritize the "story" over the "polish." |
 
-> **Hackathon agenda:** *"Saturday 12:00p Hack + build. Sunday 3p Final submission. 4-5p Demos + Pitching."*
+> **Hackathon agenda:** *"Saturday 9:30a Check in + breakfast. 10:00a Kickoff. 12:00p Hack + build. Sunday 3p Final submission. 3:30-4:30p Walk around showcase. 4:30-5:30p Demos + Pitching."*
+
+---
+
+## NSM Tree
+
+```
+                        NORTH STAR
+        OD improvement round 1 → final round
+                           |
+            _______________|___________________________
+            |               |                         |
+        LOOP             AI QUALITY                STORY
+        RELIABILITY
+                                                   
+        Rounds           Best OD per              LLM round 1
+        completed        round                    vs. basal
+        autonomously     (improving?)             reference
+                                                   
+        Zero human       Variance                 Total
+        interventions    convergence              compositions
+        per loop         across rounds            tested in 24h
+```
+
+---
+
+## Demo Metrics — what to show the judges
+
+One slide, four numbers:
+
+1. **Rounds completed autonomously** — "Our agent ran N closed loops with zero human intervention"
+2. **OD improvement** — "Cell growth improved X% from round 1 to round N" *(the North Star)*
+3. **LLM vs. basal** — "Our AI's starting recipe outperformed basal media by Y% before any optimization"
+4. **Compositions explored** — "The system designed, executed, and learned from Z unique media recipes in 24 hours"
+
+---
+
+## Hackathon Targets
+
+| Metric | Minimum | Strong | Stretch |
+|---|---|---|---|
+| North Star (OD improvement round 1 → final) | Any measurable gain | >20% | >50% |
+| Rounds completed autonomously | 2 | 3 | 3 + overnight |
+| Rounds to beat baseline | ≤3 | 2 | 1 (LLM alone wins) |
+| Human interventions per loop | 0 | 0 | 0 |
 
 ---
 

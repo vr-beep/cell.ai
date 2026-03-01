@@ -31,3 +31,6 @@ Thumbs.db
 # Large media files (exceed GitHub 100MB limit)
 doc/scrapbook/*.mp4
 doc/scrapbook/*.wav
+
+# Credentials
+scripts/token.json
