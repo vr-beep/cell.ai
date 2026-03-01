@@ -53,7 +53,7 @@ An autonomous AI agent that optimizes cell culture media composition in a closed
 
 - BayBE-based approaches have been published in Nature Communications (2025), achieving results using **3-30x fewer experiments** than standard DoE methods, and in cellular agriculture research achieving **181% more cells** than commercial media variants while using **38% fewer experiments**.
 
-- The hackathon itself is evidence: Monomer Bio, Opentrons, and multiple AI partners have organized a sold-out 50-builder event specifically around this problem space, signaling industry urgency.
+- The hackathon itself is evidence: Monomer Bio, Opentrons, and multiple AI partners have organized a 50-builder event (fifth in the series) specifically around this problem space, signaling industry urgency.
 
 > **Hackathon page:** *"For the fifth hack in this series, we're hosting another cell culture hack that brings together the Bay Area's AI, science, and engineering communities. Teams will have access to the latest AI tools for building agents and are given the opportunity to ship on Monomer's robotic workcell and individual walk-up instruments."*
 
@@ -136,7 +136,7 @@ The system has six components wired into an autonomous feedback loop:
   - **Incubate** — robot moves plate to incubator for the required time (~4 hours per round)
   - **Plate read** — robot reads optical density or other signal as the outcome metric
 
-> **Hackathon brief:** *"Robotic workcell actions are made available via MCP: Incubate, Create media mixture, Media change, Plateread."*
+> **Hackathon brief:** *"Robotic workcell actions are made available via MCP: 🌡️ Incubate, 🧪 Create media mixture, 💧 Media change, 🔬 Plateread."*
 
 **F. Data Parser + Agent Learning**
 - Raw plate reader output is parsed into structured results.
@@ -169,7 +169,7 @@ The system has six components wired into an autonomous feedback loop:
 
 > *"The biggest unknown is actually what components are available, what can we change, what agents do we have to play with — and then the equipment."* — Team member, [25:28]
 
-**Phase 2: Hack day execution (Mar 14, 10am - Mar 15, 3pm)**
+**Phase 2: Hack day execution (Mar 14, 9:30am - Mar 15, 3pm)**
 - **Hour 0-1:** Cell line revealed. LLM generates initial recipe from literature. Team configures available components and concentration ranges.
 - **Hour 1-2:** Algorithm generates first batch of ~8-12 compositions. Robot mixes and plates.
 - **Hour 2-6:** Incubation round 1 (~4 hours based on expected doubling time). Team monitors.
@@ -198,7 +198,48 @@ The system has six components wired into an autonomous feedback loop:
 | **Round 3 complete (stretch goal)** | Mar 15, ~6am | Requires overnight presence; cell viability may degrade | Optional milestone. Even 2 rounds with clear learning is a strong demo. |
 | **Demo-ready** | Mar 15, 3pm (submission deadline) | Dashboard not polished; narrative unclear | Reserve last 3 hours exclusively for demo prep. Prioritize the "story" over the "polish." |
 
-> **Hackathon agenda:** *"Saturday 9:30a Check in + breakfast. 10:00a Kickoff. 12:00p Hack + build. Sunday 3p Final submission. 3:30-4:30p Walk around showcase. 4:30-5:30p Demos + Pitching."*
+> **Hackathon agenda:** *"Saturday 9:30a Check in + breakfast. 10:00a Kickoff. 11:00a Finalize teams. 12:00p Hack + build #1. 6:00p Dinner + Round table talks. 7:00p Hack + build #2. 12:00a Robots go to sleep. Sunday 3p Final submission. 3:30-4:30p Walk around showcase. 4:30-5:30p Demos + Pitching."*
+
+---
+
+# 9. North Star Metric (NSM) Framework
+
+## Hackathon NSM
+
+**OD improvement from round 1 to final round (absolute and %)**
+
+This is the single metric that answers the question judges will ask: "Did the AI actually learn and find something better?" It is measurable directly from plate reader data with zero additional setup, does not require a separate control plate, and tells the complete story — the LLM generated a starting recipe, the optimizer proposed variations, the robot ran them, and the results got better.
+
+Round-over-round improvement serves as a self-referencing control — round 1 is the baseline. If OD improves from round 1 to round 2 to round 3, the AI demonstrably learned.
+
+---
+
+## Input Metrics
+
+### Loop Reliability — did it actually run?
+
+| Metric | Target | Why it matters |
+|---|---|---|
+| Rounds completed end-to-end with zero human intervention | 2 minimum, 3 stretch | If the loop breaks, nothing else matters. Operational prerequisite, not the goal. |
+
+### AI Quality — did the optimizer make smart choices?
+
+| Metric | Target | Why it matters |
+|---|---|---|
+| Best OD in round N vs. best OD in round N-1 | Measurable improvement each round | Feeds the North Star directly. If round 2 doesn't beat round 1, the AI didn't learn. |
+| Variance across compositions within a round | Spread narrowing as rounds progress | If all compositions perform the same, the optimizer isn't exploring meaningfully. Narrowing spread = agent converging. |
+
+### LLM Prior Quality — was the starting point intelligent?
+
+| Metric | Target | Why it matters |
+|---|---|---|
+| Round 1 best OD vs. basal media reference (1-2 wells) | Round 1 best meaningfully above worst | Proves the LLM didn't just guess randomly. Reserve 1-2 wells for basal media as a sanity check — low cost, high storytelling value. |
+
+### Speed — was it faster than manual?
+
+| Metric | Target | Why it matters |
+|---|---|---|
+| Total compositions tested across all rounds in 24h | 24-36 (8-12 per round × 2-3 rounds) | The story isn't "we tested more" — it's "we tested smarter, with zero human hands." |
 
 ---
 
@@ -243,6 +284,12 @@ One slide, four numbers:
 | Rounds completed autonomously | 2 | 3 | 3 + overnight |
 | Rounds to beat baseline | ≤3 | 2 | 1 (LLM alone wins) |
 | Human interventions per loop | 0 | 0 | 0 |
+
+---
+
+## Post-Hackathon Transition
+
+Once Cell.ai moves into real pilots with scientists, the North Star shifts to: **% yield improvement over scientist's baseline per campaign, achieved in ≤3 rounds.** This adds the proper external control group that hackathon conditions cannot accommodate. Everything built during the hackathon feeds directly into this long-term NSM.
 
 ---
 
