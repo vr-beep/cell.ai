@@ -1,0 +1,364 @@
+MEETING TRANSCRIPT (with timestamps)
+Source: meeting_audio.wav
+Duration: 2605s (43.4 min)
+Model: large-v3
+================================================================================
+
+[00:02 - 00:33]  So I mean like I think the main idea from like last time what we learned that we need to first to find the point like what parameters or something where how we will measure that it's like where we are what we optimize them and we have a plate reader there I think not microscope so like that is something what we like our starting point I guess. Okay so that's like the tools that we have available is what you're
+[00:33 - 01:04]  saying yeah okay I mean if we're just talking about like things people care about for media we can always say like there's like all this like protein content like the I don't know like you do panels of like amino acids different things that people want so that the cells can grow and expand well but I'm assuming this is also like a short-term like demo it's like a few hours or how do we like in what period of time are we demonstrating like
+[01:04 - 01:35]  success? I think what I mentioned last time we have like we have like a full day right but I think the cells type or something right they grow in four hours and we can do several loops is it like okay okay so like you could I mean you could see how like if we were able to monitor like optimize the media so that it's like best growth for them like we could be able to show like I don't know if there's a way to count or if there's like an image
+[01:35 - 02:07]  gene feature or something you could say like how well they've grown or like if the cell size is like wider or something like that that would probably be because with a plate reader I don't know really outside of like maybe measuring some media component because to your point we can't like measure contaminants. Well I think they have a microscope as well they have a it's on the website they say they have a Celigo microscope. I would think oh okay.
+[02:07 - 02:39]  So so I would think in microscope it was like there was like three different branches of the experiment like of the like idea like like a agent the flask based media cells and something with the microscope and for this one we might be able to use it but the one for a closed loop I think like yeah that they would mention that like will be for the closed loop it will be plate reader was my point.
+[02:39 - 02:47]  That's the best understanding. Do you think we can like because like I think I don't think microscope connected to the OpenTrons.
+[02:48 - 02:51]  It's on the on the robotic work cell I think.
+[02:51 - 02:52]  Oh it is.
+[02:52 - 03:11]  Yeah I mean the other thing is the contamination takes some time too so like I don't know if we would have like two versions like one where we purposely you know made it bad and like showed that we're able to like monitor and like fix it.
+[03:11 - 03:12]  Versus.
+[03:12 - 03:21]  Like because that kind of stuff also takes like a few days to grow it's not like right in that short period of time.
+[03:21 - 03:41]  But I was thinking maybe I can explain to you guys like the things we normally look at for media and the issues we had with the vendors since I'm not super aware of like the optimization technology piece with the software and then maybe you guys can think about like what pieces seem easier to work on.
+[03:42 - 03:44]  Based on like the tools available.
+[03:45 - 04:13]  So like in terms of the media at least what I know is like there's pH there's the different content there's like things like serum like proteins you can measure for the cells themselves like if you wanted like imaging so you could see the cell size or see them expanding you can also see that with a microscope like you can see that the cells have like tripled quadrupled over time.
+[04:15 - 04:41]  Versus like the contamination one I think the issue there was the fact that a lot of these automated processes like there's a lot of like equipment mixed in with the biological piece and like someone is still manually transferring things in and it's a little harder to like control than like a person that like sprays everything down and then puts it in like a clean air flow facility.
+[04:43 - 04:45]  I'm trying to think.
+[04:49 - 04:51]  Did you guys say you know what cell type it is.
+[04:52 - 04:54]  I don't know what it is.
+[04:54 - 05:06]  This is probably something that we need to reach out to them about like what cell type it is but also what components we have available right like yeah it's kind of tough without the yeah.
+[05:08 - 05:17]  I'm having a coffee chat with one of the organizer next Thursday morning 20 minutes coffee chat.
+[05:17 - 05:19]  I can try to see.
+[05:20 - 05:26]  But I don't know I kind of don't want to use this time for asking but I can like ask.
+[05:26 - 05:44]  Well I mean we should just send a message on LinkedIn or whatever you know and you know we can just you know I think I can ask Jimmy and see if he responds I can send him an email like you know today or whatever.
+[05:48 - 05:52]  But so you know the contamination I don't think we can do much about like I don't think I don't.
+[05:52 - 06:22]  I mean it's out of scope you know I don't think it's like within 24 hours and is really hard and like are we even like what is the point like are we seeding and this is a big this is a question right like are we seeding and then see how fast it grows depending on the media are we changing seeding density as well are we passaging you know like expanding or just do we even consider passaging you know.
+[06:24 - 06:47]  Yeah, this is where I think like we need some, you know, some, you know, some decisions I think that it has to be decided today but like, you know, is the experiment just, you know, from seeding till confluence, or do we also have a passaging aspect of passaging is harder because, you know, now you need to dislodge the cells.
+[06:49 - 06:50]  I see.
+[06:51 - 06:52]  No, you go first.
+[06:54 - 06:55]  No, you go first.
+[06:56 - 07:08]  So, I know the thing I think, but I still don't know if they're going to give it or it's a part of it is like, you could start with like a dirty plate and add like antibiotic because there's media where people will add antibiotics to clear contamination.
+[07:09 - 07:09]  Yeah.
+[07:10 - 07:18]  And then you could like show before after, like, that you are able to like, see that and monitor that.
+[07:19 - 07:23]  And then you wouldn't worry about confluence because the cells won't be happy up front.
+[07:23 - 07:27]  If there's things stopping.
+[07:27 - 07:28]  Them from growing.
+[07:30 - 07:57]  But yeah, if we, if we are looking at more things that help the cells grow, then there are things where I think you could like maybe we could come up with a way to stimulate them or like give some reagent and then monitor like that part, like the expansion of the cells, or like how quickly they use up the media by like seeing something depleted in the media or something like that.
+[07:58 - 07:59]  So I guess.
+[08:00 - 08:05]  I mean, as a person who not doing cell culture and like, like really barely familiar with that.
+[08:06 - 08:08]  I have like, question.
+[08:09 - 08:27]  So like, whenever, like, whenever you decide what components of your media is, how you usually like measure that, like how you select your components first, what will be in the media and how you you measure if the media is a good match for yourself or whatever.
+[08:30 - 08:32]  So I think for the component.
+[08:33 - 08:45]  It's depending on like your process so like if you want the cells to expand a lot and quickly, there are certain like proteins like cytokines, like, I can only speak to.
+[08:46 - 08:59]  I guess cell therapy but like for example for T cells like there's IL-2, IL-7 so people will say like okay if I want these to grow really fast in a short period of time like I want to use this one, and I want to use a lot of it.
+[08:59 - 09:02]  But at the same time your cells will be tired at the end.
+[09:02 - 09:06]  So maybe they'll, they won't be as potent.
+[09:06 - 09:33]  So then if you want like a mix of like the cells to be like strong and persistent, but also expand, then maybe you pick a different protein combo where you keep both in terms of like basic things you always have the base media still has like some group of like amino acids and like like glutamate and like glutamate.
+[09:33 - 09:43]  Like these kinds of like basic things to just help with the cells viability, and then there's always some serum or like proprietary serum free component to also help with the viability.
+[09:47 - 10:03]  But yeah, I think it's more of like, are you using it for the cells to stay like potent but maybe it won't grow as much or do you want them to grow a lot, and then maybe something else is going to take a hit like people normally look at expansion viability like the phenotype like how the cell looks.
+[10:04 - 10:17]  I kind of assumed I don't know why but I assume that maybe they will give us already like cells, the grown cells.
+[10:18 - 10:31]  And we will just like, we'll create a new media and exchange this media and see that cells not not dying or how they behave so that was kind of my assumption I don't know why but it was thinking.
+[10:31 - 10:32]  Yeah.
+[10:35 - 10:38]  How you usually how you would measure.
+[10:38 - 10:42]  With the ability on them, if you need it fluorescent.
+[10:42 - 10:46]  Yeah, I mean it depends, you can do fluorescence, you can do imaging.
+[10:48 - 10:49]  There's different methods.
+[10:52 - 10:53]  But use a stain right?
+[10:54 - 10:56]  Yeah, if you're doing fluorescence. Yeah.
+[10:57 - 11:04]  And then now even the imaging has like a, yeah, you're right. There's still some dye.
+[11:05 - 11:08]  Like you can't do it without a dye right it doesn't really exist does it?
+[11:08 - 11:08]  Yeah.
+[11:10 - 11:11]  You could see the cells.
+[11:12 - 11:25]  It'll just be really hard to see, but like you could still see debris. If you wanted to just like look under a microscope, you could still, if a lot of them died like it is clear, but like yeah it's not like if you wanted to quantify.
+[11:26 - 11:28]  It might be a good proxy.
+[11:29 - 11:29]  Yeah.
+[11:32 - 11:34]  Think, how about optical density.
+[11:35 - 11:37]  Is it given any valuable information.
+[11:37 - 11:40]  Yeah, I mean we have a plate. Yeah, we have plate reader. So that makes sense.
+[11:40 - 11:40]  Yeah, I mean we have a plate. Yeah, we have plate reader. So that makes sense.
+[11:40 - 11:47]  I see that more like if you were doing like looking at the killing ability of a cell so if you had two different cell types.
+[11:47 - 11:48]  I see that more like if you were doing like looking at the killing ability of a cell so if you had two different cell types.
+[11:48 - 11:50]  I see that more like if you were doing like looking at the killing ability of a cell so if you had two different cell types and the one that you don't want in there anymore.
+[11:51 - 12:05]  I see that more like if you were doing like looking at the killing ability of a cell so if you had two different cell types and the one that you don't want in there anymore.
+[12:05 - 12:12]  um that's like an assay that people will use but that requires like two different cell types
+[12:14 - 12:17]  but i think we can still use that method like if we were saying like
+[12:17 - 12:25]  how many cells are present and like the growth because like the less cells the more signal you
+[12:25 - 12:30]  would have right because if there was like a confluent layer um i don't know what kind of
+[12:30 - 12:38]  plate reader it is but i think it's also probably will depends if it's uh if cells in the suspension
+[12:38 - 12:45]  or if they yeah adherent yeah that's what we can do on the suspension rate for this one i think
+[12:45 - 12:51]  that would make more sense but if you want the impedance question they'd have to be adherent
+[12:53 - 12:59]  right because they'd have to be like blocking the signal somewhere they'd have to be like stuck
+[12:59 - 13:00]  and forming like a layer
+[13:02 - 13:02]  mm-hmm
+[13:07 - 13:11]  i mean you could you could like add something to stimulate the cells and measure like some output
+[13:12 - 13:18]  like that's also an option like if the cells like secrete different things but again like i don't
+[13:18 - 13:27]  know the cells so i'm not sure um i don't know if you have there been like previous rounds of
+[13:27 - 13:34]  like this type of demo like i'm wondering if we can see like past uh not competitions but like
+[13:34 - 13:36]  past ones to get an idea of like what people
+[13:37 - 13:39]  i think what slava
+[13:39 - 13:39]  said
+[13:39 - 13:46]  before in a slack there was uh two solutions really close to what we're trying to do i don't
+[13:46 - 13:53]  know if he ever had a chance okay okay deeper that so we we can like uh maybe uh i sent slava
+[13:53 - 13:59]  in the private chat so from what i scanned that there was like some agent who did like
+[13:59 - 14:08]  optimization so maybe we can look uh that one and but yeah i will i will send it into the general
+[14:08 - 14:09]  chat sorry for interrupting
+[14:09 - 14:14]  i will squeeze what you've sent me into the tldr and you can test it out
+[14:14 - 14:23]  okay so i guess like i i still will kind of go back in the task and the task is like optimized
+[14:23 - 14:29]  media components right but to optimize media components looks like we need to know of what
+[14:29 - 14:37]  purpose of the optimization right so is it like gross as you said like right so could it also like
+[14:37 - 14:39]  make it optional like okay oh of course you can do it but you can't do it if you don't have the
+[14:39 - 14:43]  right so it's something we choose okay we optimize we need to choose right but by ourselves
+[14:43 - 14:51]  probably what we're optimizing for it's like can be as a variable i don't know yeah i think depends
+[14:51 - 14:58]  on what is it that we want to measure um because it's probably how we i think what's gonna be the
+[14:58 - 15:05]  pain point is how you end up measuring it and then maybe like what is our abilities like since
+[15:05 - 15:10]  we're saying microscope right then like you could say cell growth because you see a few
+[15:11 - 15:15]  cells and then a lot of cells if we say cell death you can also see a lot of debris and few cells
+[15:15 - 15:24]  um but then if it's like if we're measuring like if a component of the media is being depleted
+[15:25 - 15:29]  then i would be curious like if the plate reader like i don't know how we would know like
+[15:30 - 15:37]  that we can measure the media components um just because i don't understand the automation part
+[15:37 - 15:42]  to be honest with you that's all so i don't like know
+[15:42 - 15:47]  if there's like a way to just measure like a media component that we actually added that's
+[15:47 - 15:52]  probably the simplest because you could see like how much this assumes how quickly the cells
+[15:52 - 15:59]  consume the one component and then you could say like scientists could use this to optimize like
+[15:59 - 16:06]  how quickly they have to feed the cells because like the cells within x hours consumed this
+[16:06 - 16:14]  reagent or something like that like that's also uh i will read the task what how
+[16:15 - 16:22]  they formulated once again okay so track a develop an ai agent to optimize media composition close
+[16:22 - 16:29]  uh build an autonomous workflow that iteratively uh verifies media components
+[16:29 - 16:38]  run cell culture measure outcomes and update the next experiment end to end all in real cells
+[16:38 - 16:44]  robotic work cell action are made available we via mcp incubate create media
+[16:45 - 16:52]  create media mixture media change plate read so that is what they give on us okay
+[16:56 - 17:04]  mcp uh i think you can mcp it's um a protocol i think it's a protocol how to ai how i can
+[17:05 - 17:11]  communicate with robot so you can ignore that that part oh okay uh but i think the most important
+[17:11 - 17:16]  like that like workflow that iteratively
+[17:26 - 17:33]  yeah i mean if it's iterative then it you could do the feeding i just don't know how complicated
+[17:33 - 17:38]  that is it's like the rate you feed media so you don't even have to be saying like you're
+[17:38 - 17:45]  optimizing the media like you could just be testing like how frequently you're exchanging
+[17:45 - 17:47]  the media and then measuring the outcome so you don't even have to be saying like you're
+[17:47 - 17:47]  optimizing the media and then measuring the outcome so you don't even have to be saying like you're
+[17:47 - 17:54]  the cell growth like that's an example i can think of based on the problem statement
+[17:56 - 18:13]  um because i think it should be iterative iteratively arise media components so i was
+[18:13 - 18:19]  thinking that we change in like so for example okay we have like we decided like uh these
+[18:19 - 18:24]  components might be optimal we test the these components and after we decided that we saw that
+[18:24 - 18:28]  they're not optimal and like uh we like change the composition and then we change the composition
+[18:28 - 18:35]  and test it again and change it again and test it and now like until like that looks really good
+[18:36 - 18:43]  okay so then you'd have like different sets of media right and then you would measure over like
+[18:43 - 18:49]  x time i guess it doesn't have to be growth but whatever we want to say like what we're going to
+[18:49 - 18:56]  measure to see like how well it's working i mean you just have to be careful that like the time
+[18:56 - 18:59]  frame is good enough for that
+[19:00 - 19:07]  because like if it's too short you might not be seeing enough differences with the cells
+[19:07 - 19:13]  unless the media of one is like even if it's really good like it would only be if it was
+[19:13 - 19:19]  really bad that you would see like a dramatic hit in the cells so i think we just have to be
+[19:19 - 19:26]  careful about the time frame we pick and like how many different types of media because you said the
+[19:26 - 19:30]  cells it's four hours or i think someone said yeah
+[19:30 - 19:37]  it's relatively short like i think it's yeah on the order of hours doubling time
+[19:37 - 19:43]  okay so then you could say like maybe we could test out like two different medias
+[19:43 - 19:52]  oh i think because like i also wonder uh we have an assume uh 96 well played
+[19:52 - 20:00]  okay so we probably can do like each row like different media right composition and we run one
+[20:00 - 20:02]  plate that's like
+[20:02 - 20:09]  i don't know whenever like different composition and like after optimize and run another set of
+[20:09 - 20:16]  different composition and probably two three loops i don't know because like i don't know
+[20:16 - 20:22]  two loops three maximum i don't know if somebody would like to stay overnight there okay
+[20:24 - 20:35]  but then the cells i'm sorry make sure we don't hurt ourselves because the cells they got one
+[20:35 - 20:37]  are now getting a new one
+[20:37 - 20:46]  so are we measuring like the difference overall like from one to two because like i don't know if
+[20:46 - 20:51]  there's the same cells in this row get media that's not great and then they get the one that's
+[20:51 - 20:56]  really good it might look the same as row three if row three had like really good media at the
+[20:56 - 21:02]  beginning and at the end so i don't know that is a good point i wondering if we can have a fresh
+[21:02 - 21:08]  plate for each round like we have a fresh plate we run first condition like we have a fresh plate
+[21:08 - 21:16]  first set of conditions first set of different media composition we just we measure it but we
+[21:16 - 21:23]  discard that plate and taking a new plate fresh plate because how and we change a new new conditions
+[21:23 - 21:29]  because you you're right if we will be reusing the same plate for a second loop there is no
+[21:29 - 21:36]  actually valuable data because it can be affected by previous yeah there's no control if you like
+[21:36 - 21:37]  put it on the same group of cells
+[21:41 - 21:51]  unless you want to have less conditions then you could say like you have like two or two or three
+[21:51 - 21:56]  and say like of these three this one looked the best and then so i'm gonna add it to the two that
+[21:56 - 22:01]  didn't look as good and just give the most time to see if you can show that they like recover to
+[22:01 - 22:08]  match the other row um but yeah you just have to be careful about the variability you're gonna be
+[22:08 - 22:11]  adding yeah but
+[22:11 - 22:16]  basically if like we have only one plate and we will kill the whole plate in the first round
+[22:16 - 22:22]  because all our guests will be wrong right so we failed right away so like i guess would it be
+[22:22 - 22:27]  cool to have fresh for each loop well not necessarily right because you're saying you
+[22:27 - 22:35]  can put different media in each row or no yeah yeah yeah yeah yeah yeah yeah yeah sure but if
+[22:35 - 22:41]  like i just imagine a worst case scenario if like all of them died or all out
+[22:41 - 22:51]  combination was wrong first time i don't know no it's no no not possible okay i mean are we
+[22:51 - 22:55]  yeah that's why i didn't know like are we making the media or are they giving us like uh
+[22:55 - 23:01]  because if they're giving us like a start like our starting point is the control
+[23:04 - 23:12]  regardless i don't think those are starting point i think we like they they don't given us a media
+[23:12 - 23:14]  we come up with the media by our
+[23:14 - 23:24]  self and uh that that is the idea that ai would optimize uh the components that like first guess
+[23:24 - 23:30]  like so so like the way how like i understand it works there is algorithm which can optimize
+[23:30 - 23:39]  parameters and first we give like initial and that input right that can be kind of either we
+[23:39 - 23:45]  set it up if either you said like uh okay this approximately with this cell cell
+[23:45 - 23:53]  type type or whenever like you think that might be optimal you will give it or we will put llm who
+[23:53 - 23:59]  which will go uh in a literature for this cell cell type and we'll suggest something so we need
+[23:59 - 24:05]  initial we need this first one and i don't think they given us oh i kind of assume that they like
+[24:05 - 24:12]  it's something we need to come up with what we try and first and that goes through like algorithm
+[24:12 - 24:14]  which suggests uh
+[24:14 - 24:15]  uh
+[24:15 - 24:15]  uh
+[24:15 - 24:24]  for example 12 different combinations uh we we create these combinations we exchange media we
+[24:24 - 24:30]  incubate we measure something and put these results back in algorithm which now learn from our
+[24:30 - 24:37]  previous composition which one work which does not and how well they perform and now it give us
+[24:37 - 24:44]  another set of assumptions uh until we we will find the one which results would satisfy us okay
+[24:45 - 24:53]  then yeah i think you would need new cells from round one to round two yeah um
+[24:53 - 25:11]  i guess yeah i'm wondering so so i guess at this point right now
+[25:11 - 25:21]  we cannot come up with what we optimizing around because we don't know
+[25:22 - 25:28]  uh what instruments we have for sure right like it do we have uh my
+[25:28 - 25:40]  yeah i think we need a little bit more information right like i think to me what is the biggest unknown
+[25:40 - 25:46]  is actually what components are available what can we change you know what what what agents do we have
+[25:46 - 25:52]  to to play with yeah and you know and then and then the equipment that's a quick question i think
+[25:52 - 25:57]  i think we we're not sure whether it's a play reader or whether it's a microscope so we'll do
+[25:57 - 26:01]  that that's just a question that that you know i think it yeah i think we need that information
+[26:01 - 26:08]  and from there we we can continue okay so so stop for today right like yeah i think so i think i
+[26:08 - 26:16]  think this is good like it's another you know i think you know i think i think it was a useful
+[26:16 - 26:21]  conversation that you know the the debris suggestion i thought was a really good one and
+[26:21 - 26:28]  then you know actually the the potency i didn't know that that like you know that if they grow
+[26:28 - 26:33]  too fast the cells may become less potent they become like exactly what i was going to say
+[26:33 - 26:40]  yeah so at the same the same machinery that like can activate well it depends on the cell but like
+[26:40 - 26:46]  for immune cells for example like the ones i work with if they the same mechanism that stimulates
+[26:46 - 26:52]  them exhausts them so yeah if they if you want something to grow rapidly then you have like it's
+[26:52 - 26:59]  always like a pro-con situation um yeah oh yeah if it's something like bacteria then it doesn't
+[26:59 - 27:03]  matter you can just that's why i was like what cells are they because like you we could just have
+[27:03 - 27:10]  a plate of some different things for them see how much bigger yeah oh yeah i really don't know what
+[27:10 - 27:16]  cells yeah so we'd like to know if it's if it's actually cells or are we working with bacteria
+[27:18 - 27:25]  and another question i guess for nikki like just imagine if it's cells and like you optimize in
+[27:25 - 27:30]  what you will be looking for like for growth like or for like in your viability
+[27:31 - 27:41]  yeah viability growth like depending on um the purpose of the cell like for me it's like potency
+[27:41 - 27:47]  like how like whatever their mechanism of action you're using them for so like there's the functional
+[27:47 - 27:53]  there's like the health there's the health piece and then there's the functional piece so whatever
+[27:53 - 28:01]  you wanted these cells for versus like the general like are they in good condition um attributes i
+[28:01 - 28:02]  i would
+[28:02 - 28:06]  break it down i'm just trying to generalize it for any cell type since a lot of my work is
+[28:06 - 28:15]  specifically immune cells but um yeah i think the health ones are probably a lot easier right like
+[28:15 - 28:23]  if they're alive if they're growing it's just simpler um the other ones get a little complicated
+[28:23 - 28:29]  so i just don't know that we would want to like deal with all of that but um yeah and alive and
+[28:29 - 28:33]  growing it would be uh relevant and i know visually we could see those but i don't know
+[28:33 - 28:42]  okay yeah we could visually see that with a microscope for sure um but like yeah um but
+[28:44 - 28:53]  it's not uh like uh ai recognition it's something you you will look and you will say right this is
+[28:53 - 29:02]  where i don't know like what the plate reader is doing because like if it like you could
+[29:03 - 29:10]  i don't know if like the cells were adherent and then they flew
+[29:10 - 29:15]  floated off because they died like you could say like you could measure viability that way
+[29:15 - 29:23]  or like if it was like a signal thing i don't know if it was like a signal like an impedance
+[29:24 - 29:29]  like that's how you can look at like if the cells are confluent like if they grew a lot because like
+[29:29 - 29:34]  it's like some light signal going through the bottom of the plate reader so like when you say
+[29:34 - 29:40]  what does that mean actually uh you've mentioned a couple yeah i also remember oh like the like
+[29:40 - 29:46]  there's plate readers where like they're used to see like two cells killing ability so like that
+[29:46 - 29:51]  cell that's like your target you want to kill you like it's adherent and you see it on the bottom
+[29:51 - 29:59]  and then the ones you add that you want to like remove these cells if they remove the cells
+[29:59 - 30:05]  there's more light coming through the bottom so like there's less impedance is what they call it
+[30:05 - 30:09]  because like the cells aren't blocking the light so like you know more killing happen because like
+[30:11 - 30:12]  there's more light coming through the bottom so like there's less impedance is what they call it
+[30:12 - 30:17]  and then if the cells are all still on the bottom then there's like not much light signal
+[30:17 - 30:23]  because they're like covering the whole bottom of the plate um so like i just don't know like what
+[30:23 - 30:29]  the plate reader is doing is the other problem because like i think if you if you know what it
+[30:29 - 30:35]  can do then like it's probably easy for us to come up with like something that's like simple
+[30:35 - 30:40]  to look at but sorry guys uh just a little question to nikki
+[30:41 - 30:47]  to make sure we can we don't focus on like a tax tech and more about the solution just uh maybe i
+[30:47 - 30:55]  missed uh nikki uh can you like tell me if it just imagine the chat gpd or whatever uh any chat
+[30:55 - 31:02]  works the way we want our agent worth what would be the question to you and and what the answer
+[31:03 - 31:11]  you are expecting to like you know like i i build uh agents for evaluation startup and i want to send
+[31:11 - 31:17]  each deck and and and response should be should I invest or not and why and can you explain the
+[31:17 - 31:24]  same like high level concept concept of whether you want what you usually want to send and what
+[31:24 - 31:32]  you want to receive and how you understand that this is actually something viable okay I guess if
+[31:32 - 31:42]  it's for media components I would say like I have these cells I want to see like this much growth
+[31:42 - 31:48]  like what I think Katya kind of touched on it like what would you what cocktail would be good
+[31:48 - 31:55]  for that um or like it could also be like how much like the quantity I should use of the
+[31:55 - 32:03]  individual components um because that's something you would also optimize um
+[32:03 - 32:04]  I guess
+[32:04 - 32:08]  or you could say like I have these three typically like you're comparing different
+[32:08 - 32:12]  things so it's like I have these three different types like which is the most optimal
+[32:12 - 32:22]  for what I'm looking at um I don't know if that answers the question yeah yeah yeah and and
+[32:22 - 32:29]  yeah so the request is like hey I want to get this this cell uh help me with the received
+[32:29 - 32:35]  and what's better to choose because I have a limited like probably you don't have all the
+[32:35 - 32:36]  elements so
+[32:37 - 32:43]  for a stupid uh like language but maybe like i i have like potatoes but i don't have batata or
+[32:43 - 32:49]  whatever like sweet potatoes you basically have some something and something you don't have so
+[32:49 - 32:56]  you want to like uh uh limit the answer by what your like components here you have right now right
+[32:56 - 33:03]  yeah okay makes sense and and the okay and the answer is gonna be what like it's gonna be
+[33:03 - 33:12]  if like how the the answer looks like like you would say like you use like it would like list
+[33:12 - 33:18]  the components and say like either like these are the ones you use and this is how much you use of
+[33:18 - 33:30]  each of it uh-huh cool um like a recipe i would say kind of yeah yeah and the recipes should be
+[33:30 - 33:33]  and how we understand that the recipe is actually good
+[33:33 - 33:34]  um
+[33:36 - 33:42]  i guess you guys could use scientific literature like to compare against like what real world
+[33:43 - 33:47]  like that's something i would do is like i would know from like reading papers that like
+[33:47 - 33:53]  you know these cells require like these things that are good for them so i know i'm not like
+[33:53 - 34:00]  getting bogus info but like i don't know how else okay so you will like take a research and
+[34:00 - 34:06]  compare it to research papers if it's something like crazy or like what is standard yeah like
+[34:06 - 34:07]  what is standard industry or like what is standard industry like what is standard industry
+[34:07 - 34:14]  like yeah industry standard or like what is what is already well known out there okay that sounds
+[34:14 - 34:19]  real and then if it's something like like you think it makes sense you start like cooking
+[34:19 - 34:27]  right and then you see the result and if it's result if the cell is is growing everything is
+[34:27 - 34:33]  fine it's good and it's if it's not you need to figure out if it's a problem with the receipt or
+[34:33 - 34:38]  with other third like external things happen right and then you start cooking and then you start
+[34:38 - 34:44]  right yeah and also like is it just one part of the media or all of the media like if you have a
+[34:44 - 34:50]  recipe right if you like imagine if you're cooking like a soup or something i don't know like you
+[34:50 - 34:55]  didn't add enough salt and that doesn't taste like anything so then you have to go back and add
+[34:55 - 35:00]  more salt next time or like yeah you don't want a new receipt you just want to change of the
+[35:00 - 35:06]  the part that you've missed or or something changed yeah or like often yeah that's where
+[35:06 - 35:07]  the it can either be like
+[35:08 - 35:14]  yeah different like alternate options or like optimizing the options in there already
+[35:15 - 35:21]  nice so basically we have a feedback loop right so we were like cooking and then we see a result
+[35:21 - 35:27]  and the result is coming back in the way we can uh determine what part of the receipt was wrong
+[35:29 - 35:36]  okay okay like and what is the benchmark what is a good enough for for receipt like
+[35:36 - 35:38]  to be
+[35:38 - 35:45]  so how like of course the first try maybe is going to be a bullshit but like three or four retries
+[35:45 - 35:51]  which is better than the human being like you know we want to like optimize it and perform
+[35:51 - 35:57]  better than the human right um you're saying like how many times should it take to like get
+[35:57 - 36:07]  to the best option or yeah yeah thank you thank you okay okay um i don't know if honestly
+[36:09 - 36:11]  because it's going to take a person forever
+[36:11 - 36:18]  anyway i don't know if that's the limitation or how fast because like a person could test like 50
+[36:18 - 36:26]  conditions in like three hours but like if this can spit it back faster and then i think to katya's
+[36:26 - 36:36]  point do the iterative part um i think even like three times would be impressive because like if i
+[36:36 - 36:42]  was in a lab it would take a lot longer than that okay makes sense
+[36:43 - 36:49]  uh what do you think is the like you just had a during all this manual process you do without that
+[36:49 - 37:00]  like what what actually pieces you off the most like how many different conditions you have to set
+[37:00 - 37:17]  up and then yes the it's more like the manual labor piece that's like the problem for all these
+[37:17 - 37:20]  iterative like hands-on stuff
+[37:21 - 37:27]  it's not like like the like reading results or like comparing data isn't the issue it's really
+[37:27 - 37:34]  like the amount of time it takes to set up so many different conditions could you please like
+[37:34 - 37:37]  tell me more about this setting up the conditions so i understand it better
+[37:37 - 37:47]  yeah like if i was in a lab and like i wanted to test like two different medias and check like
+[37:47 - 37:50]  this four different components in those two different medias
+[37:50 - 38:00]  it's like um i might have to have like like 30 different samples which are each like a plate
+[38:00 - 38:07]  that has my cells and my media with like the different condition but then i also manually
+[38:07 - 38:16]  have to make those individual media conditions and like pour them in every plate and like monitor
+[38:16 - 38:36]  all those plates um i guess if we it's like a matrix
+[38:36 - 38:41]  like you have to make like a huge matrices manually in person with a bunch of different
+[38:41 - 38:44]  media so i'm sitting with a bunch of different bottles of media i'm pouring
+[38:44 - 38:53]  a bunch of different individual plates checking how things look and i monitor and if it's like
+[38:53 - 38:58]  manual like i'm monitoring so like i have to come in and measure with however you're going to measure
+[38:58 - 39:05]  that the cells look good over like x period of time and then compile all that data like
+[39:05 - 39:08]  excel sheet or something oh geez
+[39:08 - 39:16]  okay okay it's it sounds viable it sounds viable and uh the last question what is the riskiest part
+[39:16 - 39:23]  of the whole process like where the if if it's automated right uh what do you think where things
+[39:23 - 39:47]  will go wrong almost for sure if it's automated yeah like a good example would be um when i
+[39:47 - 39:53]  evaluate startups usually they uh let's let's be honest bullshitting about their metrics
+[39:53 - 39:58]  so usually i will like my agent will get some information about the startup from open sources
+[39:58 - 40:05]  which is like overly optimistic and i need to be like pessimistic also so it's gonna be like
+[40:05 - 40:12]  i need i need something and i know the issue so by design i put this solution that i i i slice
+[40:12 - 40:17]  and dice it like to make it more like realistic you know just a probabilistic formula that reduced
+[40:17 - 40:23]  the numbers to the something realistic you know uh this is how i solve that or
+[40:23 - 40:30]  i i do ask the founders and send them like questions like to to to check it out double
+[40:30 - 40:36]  check it automatically that's that's the thing so maybe you yes you can think something that can
+[40:36 - 40:43]  go wrong yeah i'm just thinking like in the experience i had with like a company that was
+[40:43 - 40:49]  trying to optimize their process of automation one of the issues was like it's as good as like
+[40:49 - 40:52]  the inputs so like if for some reason
+[40:54 - 41:04]  what we thought or like what you thought wasn't like correct or like the best approach then like
+[41:04 - 41:09]  you have a bunch of like options but like none of them are good the other thing i can think of is
+[41:09 - 41:21]  like the readout so like if the readout isn't good enough like if for some reason i don't know
+[41:21 - 41:27]  you can only optimize it to a certain extent like if say like i wanted my cells to quadruple in three
+[41:27 - 41:30]  hours but like you tell me you can only optimize it to a certain extent like if say like i wanted
+[41:30 - 41:35]  like 20 different media conditions but i only got two and a half times doubling
+[41:39 - 41:46]  so basically it's a problem of data input and readout of the results right yeah that's what
+[41:46 - 41:49]  i think because the thing is for the end process the biggest issue i've seen is the contamination
+[41:49 - 41:58]  so i i don't know or like if they're oh you know what if there's things you can't that they
+[41:58 - 42:02]  chose not to measure so like i don't know for some reason
+[42:02 - 42:08]  like if you don't have the capability to like monitor certain aspects of the process like
+[42:08 - 42:16]  if you did 50 different types of media for example and then it shows like you know 30 out of the 40
+[42:16 - 42:23]  were bad but then we don't know was it bad because the media was bad or because maybe someone
+[42:23 - 42:30]  didn't have like a sensor for like ph or co2 to see if like the cells actually consumed it faster
+[42:30 - 42:33]  and they died like if you're missing like
+[42:33 - 42:39]  a component of the measuring piece so that you don't get the full picture yeah observability on
+[42:39 - 42:47]  each step uh to to get okay makes sense thank you so much nikki sorry for uh like uh torturing you
+[42:47 - 42:55]  if guys you have something to add please feel free and i'm muting all right thank you oh good
+[42:55 - 43:08]  on my side are you saying that you can send a message to jimmy yeah i'll try yeah i'll send a
+[43:08 - 43:09]  message tonight
+[43:10 - 43:19]  um see if he responds okay okay thank you guys thank you a lot yeah all right thank you thank
+[43:19 - 43:22]  you okay we'll stay in touch all right bye
