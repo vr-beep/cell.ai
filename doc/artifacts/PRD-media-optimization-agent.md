@@ -213,6 +213,8 @@ This is the single metric that answers the question judges will ask: "Did the AI
 
 Round-over-round improvement remains a valuable supporting metric (it tells the learning story), but the North Star must be anchored to an external control. A self-referencing metric like "round 1 to final round improvement" can be inflated by a deliberately poor starting recipe — judges will see through this.
 
+**Basal media definition:** Standard recommended media for the given cell type without optimization (e.g., DMEM + 10% FBS for common mammalian lines). This ensures the baseline is credible and non-gameable.
+
 ---
 
 ## Input Metrics
@@ -255,9 +257,9 @@ Round-over-round improvement remains a valuable supporting metric (it tells the 
         LOOP             AI QUALITY                STORY
         RELIABILITY
                                                    
-        Rounds           Final best               Round-over-round
-        completed        vs. basal (%)            OD improvement
-        autonomously     (the NSM)               (learning curve)
+        Rounds           Best OD per              Round-over-round
+        completed        round                    OD improvement
+        autonomously     (improving?)             (learning curve)
                                                    
         Zero human       Variance                 Total
         interventions    convergence              compositions
