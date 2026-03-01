@@ -148,6 +148,7 @@ The system has six components wired into an autonomous feedback loop:
 
 **Plate layout strategy:**
 - 96-well plate: each row = a different media composition, columns = biological replicates.
+- Reserve 1-2 wells per plate for basal media control — zero-cost addition that provides the external baseline for the North Star metric.
 - Fresh plate for each optimization round to avoid carryover effects confounding the results.
 
 > *"If we will be reusing the same plate for a second loop, there is no actually valuable data because it can be affected by previous [conditions]. Yeah, there's no control if you put it on the same group of cells."* — Team member & Nikki, [21:23]
@@ -206,11 +207,11 @@ The system has six components wired into an autonomous feedback loop:
 
 ## Hackathon NSM
 
-**OD improvement from round 1 to final round (absolute and %)**
+**Best OD achieved across all rounds vs. basal media control (absolute and %)**
 
-This is the single metric that answers the question judges will ask: "Did the AI actually learn and find something better?" It is measurable directly from plate reader data with zero additional setup, does not require a separate control plate, and tells the complete story — the LLM generated a starting recipe, the optimizer proposed variations, the robot ran them, and the results got better.
+This is the single metric that answers the question judges will ask: "Did the AI find something genuinely good?" It is measurable directly from plate reader data, requires only reserving 1-2 wells per plate for basal media (zero-cost), and provides external validity — the AI's best recipe is compared against an independent baseline, not against its own starting point.
 
-Round-over-round improvement serves as a self-referencing control — round 1 is the baseline. If OD improves from round 1 to round 2 to round 3, the AI demonstrably learned.
+Round-over-round improvement remains a valuable supporting metric (it tells the learning story), but the North Star must be anchored to an external control. A self-referencing metric like "round 1 to final round improvement" can be inflated by a deliberately poor starting recipe — judges will see through this.
 
 ---
 
@@ -247,16 +248,16 @@ Round-over-round improvement serves as a self-referencing control — round 1 is
 
 ```
                         NORTH STAR
-        OD improvement round 1 → final round
+            Best OD vs. basal media control
                            |
             _______________|___________________________
             |               |                         |
         LOOP             AI QUALITY                STORY
         RELIABILITY
                                                    
-        Rounds           Best OD per              LLM round 1
-        completed        round                    vs. basal
-        autonomously     (improving?)             reference
+        Rounds           Final best               Round-over-round
+        completed        vs. basal (%)            OD improvement
+        autonomously     (the NSM)               (learning curve)
                                                    
         Zero human       Variance                 Total
         interventions    convergence              compositions
@@ -269,9 +270,9 @@ Round-over-round improvement serves as a self-referencing control — round 1 is
 
 One slide, four numbers:
 
-1. **Rounds completed autonomously** — "Our agent ran N closed loops with zero human intervention"
-2. **OD improvement** — "Cell growth improved X% from round 1 to round N" *(the North Star)*
-3. **LLM vs. basal** — "Our AI's starting recipe outperformed basal media by Y% before any optimization"
+1. **Best OD vs. basal** — "Our AI's best recipe outperformed basal media by X%" *(the North Star)*
+2. **OD improvement** — "Cell growth improved Y% from round 1 to round N" *(the learning story)*
+3. **Rounds completed autonomously** — "Our agent ran N closed loops with zero human intervention"
 4. **Compositions explored** — "The system designed, executed, and learned from Z unique media recipes in 24 hours"
 
 ---
@@ -280,7 +281,7 @@ One slide, four numbers:
 
 | Metric | Minimum | Strong | Stretch |
 |---|---|---|---|
-| North Star (OD improvement round 1 → final) | Any measurable gain | >20% | >50% |
+| North Star (best OD vs. basal control) | Any measurable gain | >30% above basal | >2x basal |
 | Rounds completed autonomously | 2 | 3 | 3 + overnight |
 | Rounds to beat baseline | ≤3 | 2 | 1 (LLM alone wins) |
 | Human interventions per loop | 0 | 0 | 0 |
@@ -326,3 +327,78 @@ These were explicitly identified during the team meeting as blockers requiring i
 | Initial media recipe | LLM literature search | No starting media provided; AI generates first guess |
 | Plate strategy | Fresh plate per round (preferred) | Avoids carryover confounding results |
 | Number of loops | 2-3 in 24 hours | ~4 hour incubation per round; overnight stay optional |
+
+---
+
+# 10. PRD Review — Critical Assessment
+
+## Red Flags — Things that will hurt on March 14
+
+### 1. The "World Model / Digital Twin" (Component D) is fantasy scope for a 24-hour hack
+
+With 2-3 wet lab rounds and only 8-12 data points after round 1, there is not enough data to build a meaningful surrogate model in a high-dimensional space. The PRD says "In round 1 this layer is thin" — it's not thin, it's nonexistent, and by round 2 there still isn't enough data for it to matter. This component will eat engineering hours for zero demo value.
+
+**Action:** Cut it entirely. BayBE's acquisition function already handles explore/exploit without a separate simulator layer. Every hour spent on a "world model" is an hour not spent on MCP integration reliability, which is where hacks actually fail.
+
+### 2. The timeline assumes zero setup friction — the #1 killer
+
+Phase 2 says "Hour 0-1: Cell line revealed, LLM generates recipe, team configures components." In reality, Hour 0-3 at these hacks is: figuring out MCP authentication, debugging why the liquid handler won't respond, discovering the plate reader output format is different than expected, realizing the available media components don't match what the LLM suggested. Getting the first plate into the incubator before Hour 3-4 would be exceptional.
+
+**Action:** Plan for first plate-in-incubator at Hour 4. That gives two rounds max, not three. Build the "minimum viable demo" narrative around 2 rounds. Three is a stretch goal, not the plan.
+
+### 3. No fallback plan for when MCP breaks
+
+The entire system depends on four MCP endpoints that Monomer provides. The milestones table mentions "Have fallback to manual MCP commands if API integration fails" — but what does that actually mean? If MCP is down, the entire autonomous loop is dead.
+
+**Action:** Define a concrete fallback: "If MCP is unavailable, manually trigger each robot action via Monomer's UI while the AI agent still handles composition design, data parsing, and optimization. The demo story becomes 'AI-designed, human-triggered' rather than 'fully autonomous.'" This is still a compelling demo and prevents a total wipeout.
+
+### 4. "Fresh plate per round" is stated as preferred but not confirmed
+
+If the organizers only provide one plate, or if cells aren't pre-seeded and ready, the entire experimental design collapses. This is listed as an open question but treated as a resolved decision in the design section — these are contradictory.
+
+**Action:** Design for both scenarios NOW. Fresh plates: current design. Same plate: different plate layout with reserved control wells and carryover accounting. Have both configurations ready to deploy morning-of.
+
+---
+
+## Yellow Flags — Structural issues
+
+### 5. ~~The NSM is measuring the wrong thing~~ RESOLVED
+
+**Fixed in Section 9.** NSM updated from self-referencing "OD improvement round 1 to final" to externally-anchored "Best OD vs. basal media control." Basal control wells (1-2 per plate) added to plate layout. Demo metrics reordered to lead with the North Star. Round-over-round improvement retained as a supporting input metric for the learning story.
+
+### 6. OD as a proxy for growth is not universally valid
+
+For adherent cells, OD readings are notoriously noisy because cells stick to the bottom and don't scatter light uniformly. For suspension cells, OD works well. Since the cell type is unknown, the PRD needs a contingency plan for adherent cells — possibly using a confluence-based imaging readout if available, or at minimum acknowledging the limitation and describing how to handle it.
+
+### 7. 8-12 compositions per round is under-specified
+
+How many media components are being varied? What are the concentration ranges? BayBE needs a defined search space. The PRD hand-waves this as "configured morning-of" but search space design is the hardest part. With 6 components at 5 concentration levels, that's 15,625 possible combinations. 8-12 points per round across 2 rounds means sampling 0.1% of the space. BayBE configuration (kernel choice, acquisition function, priors from the LLM) matters enormously and needs to be pre-built and tested, not improvised.
+
+**Action:** Add a section on search space design. Define: max components (cap at 4-5 for a hack), concentration range strategy (e.g., +/- 50% around LLM-suggested baseline), and how BayBE priors are initialized from the LLM output.
+
+### 8. The architecture has six components but no ownership or build plan
+
+Who builds the LLM literature agent? Who builds the BayBE integration? Who writes the MCP client? Who writes the plate reader parser? The PRD describes a system but doesn't break it into work streams. For a 24-hour hack with 3-5 people, ownership must be assigned before walking in the door.
+
+---
+
+## Minor Issues
+
+- **Meeting quotes are overused.** They add flavor but make the PRD read more like a meeting summary than a product spec. Sections 2-3 could each lose 2-3 quotes and be tighter.
+- **"Confirm with organizers" is still listed as ASAP.** The hack is March 14 and today is March 1. If not confirmed by now, "build cell-type-agnostic" should be the plan, not the fallback.
+- **Post-Hackathon Transition section is premature.** The hack hasn't shipped yet. This reads like pitch deck padding. Focus the PRD on winning March 14-15.
+
+---
+
+## What's Strong
+
+- Problem framing (Section 2) is excellent — clear problem, clear hypothesis, clear out-of-scope.
+- Scoping decisions table says no to the right things.
+- Demo Metrics (four numbers, one slide) is sharp.
+- Hackathon targets table with Minimum/Strong/Stretch is well-calibrated.
+
+---
+
+## Bottom Line
+
+The biggest risk is that the PRD describes a six-component architecture when what's needed is a three-component system that actually works: **(1) LLM generates recipes, (2) BayBE optimizes, (3) MCP executes.** Cut the world model, add a concrete fallback plan, fix the North Star metric, and add a work breakdown with owners. The difference between teams that win these hacks and teams that demo a slide deck is ruthless scope reduction.
