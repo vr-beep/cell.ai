@@ -1,0 +1,75 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#f9f9f9', 'primaryBorderColor': '#333', 'lineColor': '#333'}}}%%
+
+graph TB
+    subgraph PHASE1["PHASE 1: RESEARCH (12PM-2PM Saturday, our plan)"]
+        direction LR
+        Tutorial["Tutorial:\nSeeding density\nexperiment (1h)"]
+        Research["Research:\nSelect 3 components\nfrom 16 reagents"]
+        Ranges["Define dilution\nranges"]
+        Precip["Identify\nprecipitation\nconstraints"]
+        Strategy["DOE vs Bayesian\ndecision"]
+        Tutorial --> Research --> Ranges --> Precip --> Strategy
+    end
+
+    subgraph PHASE2["PHASE 2: BUILD + EXPERIMENT (2PM Saturday - 12AM)"]
+        direction TB
+
+        subgraph INPUT["A. Input (Confirmed)"]
+            CellType["Cell: V. natriegens\n(~10 min doubling)"]
+            Components["3 selected components\n+ dilution ranges"]
+            Constraints["Constraints:\n- Precipitation rules\n- 96-well plate\n- NaCl requirement\n- Seeding density\n  (from tutorial)"]
+        end
+
+        subgraph ELNORA["B. Elnora's MCP (Protocol Optimizer)"]
+            ElnoraAPI["Elnora MCP\n(generates + optimizes\nprotocols, learns from\nsuccesses & failures)"]
+            ElnoraAPI -->|"Decides what\nto try next"| NextRecipe["Next batch\n(8-12 compositions\nper round)"]
+        end
+
+        subgraph BAYESOPT["C. BayBE (Fallback only)"]
+            BayBE["BayBE engine\n(only if Elnora lacks\noptimization capability)"]
+            BayBE -->|"Batch of 8-12\ncompositions"| PlateLayout["96-well plate layout:\n- Rows = compositions\n- Cols = replicates\n- 1-2 wells = LBv2 control"]
+        end
+
+        subgraph ROBOT["D. Monomer's MCP (Robot Hands)"]
+            MCP_Mix["Create media\nmixture\n(Opentrons Flex)"]
+            MCP_Exchange["Media\nexchange"]
+            MCP_Incubate["Incubate\n(~45 min, STX-220)\nTemp: 37C default\n(controllable via MCP)"]
+            MCP_Read["Plate read\n(OD600, Tecan\nInfinite)"]
+            MCP_Mix --> MCP_Exchange --> MCP_Incubate --> MCP_Read
+        end
+
+        subgraph LEARN["E. Data Parse + Learn"]
+            Parse["Parse plate reader\nCSV output"]
+            GrowthRate["OD600 → growth rate\nln(OD_f/OD_i) / time"]
+            Compare["Compare vs.\nLBv2 basal control"]
+            Update["Feed structured results\nto Elnora MCP\n(growth rates + success/fail\nper composition)"]
+            Parse --> GrowthRate --> Compare --> Update
+        end
+
+        subgraph DASHBOARD["F. Live Dashboard (Streamlit)"]
+            Dash["Real-time results\n- Growth rate per round\n- Best vs. basal\n- Component heatmap\n- Precipitation warnings"]
+        end
+
+        CellType --> ElnoraAPI
+        Components --> ElnoraAPI
+        Constraints --> ElnoraAPI
+        NextRecipe --> MCP_Mix
+        PlateLayout -.->|"if BayBE\nis used"| MCP_Mix
+        MCP_Read --> Parse
+        Update -->|"Results + next\nround request"| ElnoraAPI
+        Compare --> Dash
+
+        subgraph FALLBACK["G. Fallback: Human-Triggered"]
+            Manual["If MCP down:\nAI designs recipes,\nhuman triggers robot\nvia Monomer UI"]
+        end
+    end
+
+    Strategy --> PHASE2
+
+    style PHASE1 fill:#e6f3ff,stroke:#0066cc,stroke-width:2px
+    style PHASE2 fill:#f3fff3,stroke:#00aa00,stroke-width:2px
+    style ELNORA fill:#fff3e6,stroke:#cc6600,stroke-width:2px
+    style ROBOT fill:#f3f3ff,stroke:#0000cc,stroke-width:2px
+    style BAYESOPT fill:#f9f9f9,stroke:#999,stroke-width:1px,stroke-dasharray: 5 5
+    style FALLBACK fill:#fff0d0,stroke:#cc8800,stroke-width:1px
+    style DASHBOARD fill:#e6ffe6,stroke:#00aa00,stroke-width:1px
