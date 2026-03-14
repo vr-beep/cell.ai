@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__monitor__get_plate_details",
+      "mcp__monitor__get_plate_observations",
+      "Bash(pip show:*)",
+      "Read(//Users/joed3/.claude/**)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(k,'''':'''',v\\) for k,v in d.get\\(''''mcpServers'''',{}\\).items\\(\\)]\")",
+      "Bash(python3:*)"
+    ]
+  }
+}
