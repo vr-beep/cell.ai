@@ -20,9 +20,15 @@ import argparse
 import csv
 import io
 import json
+import statistics
 import subprocess
 import sys
+from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
+
+import numpy as np
+from scipy.optimize import curve_fit
 
 # Output CSV columns — must match the example in data/
 COLUMNS = [
@@ -37,6 +43,38 @@ COLUMNS = [
     "cell_concentration_cells_per_mL",
     "reagent_name",
     "reagent_volume_uL",
+]
+
+# One row per well — logistic S-curve fit metrics
+GROWTH_COLUMNS = [
+    "culture_id",
+    "well",
+    "plate_id",
+    "plate_barcode",
+    "status",
+    "parent_culture_id",
+    "reagent_name",
+    "reagent_volume_uL",
+    "n_timepoints",
+    "growth_rate_per_hr",
+    "t_inflection_hours",
+    "max_absorbance_OD600",
+    "max_cell_concentration_cells_per_mL",
+    "fit_r2",
+    "fit_rmse",
+]
+
+# One row per (plate, reagent_name) — replicate summary
+REPLICATE_COLUMNS = [
+    "plate_id",
+    "plate_barcode",
+    "reagent_name",
+    "n_replicates",
+    "mean_growth_rate_per_hr",
+    "median_growth_rate_per_hr",
+    "variance_growth_rate_per_hr",
+    "mean_max_absorbance_OD600",
+    "mean_max_cell_concentration_cells_per_mL",
 ]
 
 # Subprocess prompt: just instruct Claude to call the 3 tools.
@@ -62,30 +100,38 @@ ALLOWED_TOOLS = ",".join([
     "mcp__monitor__read_resource",
 ])
 
-SUBPROCESS_TIMEOUT_SECONDS = 120
+SUBPROCESS_TIMEOUT_SECONDS = 90
+SUBPROCESS_MAX_RETRIES = 3
 
 
 def fetch_raw(plate_id: str) -> dict:
     """Invoke Claude Code to call MCP tools; extract results from stream-json events."""
     prompt = FETCH_PROMPT.format(plate_id=plate_id)
-    try:
-        result = subprocess.run(
-            [
-                "claude", "-p", prompt,
-                "--allowedTools", ALLOWED_TOOLS,
-                "--model", "claude-haiku-4-5-20251001",
-                "--output-format", "stream-json",
-                "--verbose",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=SUBPROCESS_TIMEOUT_SECONDS,
-        )
-    except subprocess.TimeoutExpired:
-        raise RuntimeError(
-            f"claude subprocess timed out after {SUBPROCESS_TIMEOUT_SECONDS}s. "
-            "Check that the monitor MCP server is reachable."
-        )
+    cmd = [
+        "claude", "-p", prompt,
+        "--allowedTools", ALLOWED_TOOLS,
+        "--model", "claude-haiku-4-5-20251001",
+        "--output-format", "stream-json",
+        "--verbose",
+    ]
+    last_error: Exception | None = None
+    for attempt in range(1, SUBPROCESS_MAX_RETRIES + 1):
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True,
+                timeout=SUBPROCESS_TIMEOUT_SECONDS,
+            )
+            break
+        except subprocess.TimeoutExpired:
+            last_error = RuntimeError(
+                f"claude subprocess timed out after {SUBPROCESS_TIMEOUT_SECONDS}s "
+                f"(attempt {attempt}/{SUBPROCESS_MAX_RETRIES}). "
+                "Check that the monitor MCP server is reachable."
+            )
+            if attempt < SUBPROCESS_MAX_RETRIES:
+                print(f"  Timeout on attempt {attempt}, retrying...", file=sys.stderr)
+    else:
+        raise last_error
     if result.returncode != 0:
         print("claude stderr:", result.stderr, file=sys.stderr)
         raise RuntimeError(f"claude exited with code {result.returncode}")
@@ -257,16 +303,163 @@ def _num(val):
         return val
 
 
-def write_csv(rows: list[dict], path: str) -> None:
+def _logistic(t: np.ndarray, K: float, r: float, t0: float) -> np.ndarray:
+    return K / (1.0 + np.exp(-r * (t - t0)))
+
+
+def _fit_logistic(times_hr: list[float], od_values: list[float]):
+    """Fit logistic S-curve to a single well's time series.
+
+    Returns (K, r, t0, r2, rmse). All None when fitting requires > 2 points
+    or curve_fit fails to converge.
+    """
+    t = np.array(times_hr, dtype=float)
+    y = np.array(od_values, dtype=float)
+
+    if len(t) < 3:
+        return None, None, None, None, None
+
+    K0 = float(np.max(y)) * 1.1
+    t0_0 = float(t[int(np.argmin(np.abs(y - K0 / 2)))])
+    try:
+        popt, _ = curve_fit(
+            _logistic, t, y,
+            p0=[K0, 1.0, t0_0],
+            bounds=([0.0, 0.0, -np.inf], [np.inf, np.inf, np.inf]),
+            maxfev=5000,
+        )
+        K, r, t0 = float(popt[0]), float(popt[1]), float(popt[2])
+        y_pred = _logistic(t, *popt)
+        ss_res = float(np.sum((y - y_pred) ** 2))
+        ss_tot = float(np.sum((y - float(np.mean(y))) ** 2))
+        r2 = round(1.0 - ss_res / ss_tot, 6) if ss_tot > 0 else None
+        rmse = round(float(np.sqrt(float(np.mean((y - y_pred) ** 2)))), 6)
+        return round(K, 6), round(r, 6), round(t0, 4), r2, rmse
+    except Exception:
+        return None, None, None, None, None
+
+
+def _to_unix(ts: str) -> float:
+    """Parse ISO 8601 timestamp to Unix seconds."""
+    dt = datetime.fromisoformat(ts.strip())
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.timestamp()
+
+
+def estimate_growth(rows: list[dict]) -> list[dict]:
+    """Fit a logistic S-curve to each well and return one row per (plate, well).
+
+    Input: rows from build_rows() — one entry per timepoint × reagent × well.
+    Output: one dict per well with S-curve fit metrics.
+    """
+    # Deduplicate to unique (timestamp, OD) per well; keep first-seen culture metadata.
+    well_data: dict[tuple, dict] = {}
+    for row in rows:
+        key = (row["plate_id"], row["well"])
+        if key not in well_data:
+            well_data[key] = {
+                "culture_id": row["culture_id"],
+                "well": row["well"],
+                "plate_id": row["plate_id"],
+                "plate_barcode": row["plate_barcode"],
+                "status": row["status"],
+                "parent_culture_id": row["parent_culture_id"],
+                "reagent_name": row["reagent_name"],
+                "reagent_volume_uL": row["reagent_volume_uL"],
+                "_ts_od": {},
+            }
+        ts = row["observation_timestamp"]
+        od = row["absorbance_OD600"]
+        if ts and od is not None:
+            well_data[key]["_ts_od"][ts] = float(od)
+
+    growth_rows = []
+    for meta in well_data.values():
+        points = sorted(meta.pop("_ts_od").items())
+        n = len(points)
+
+        if n == 0:
+            growth_rows.append({**meta, "n_timepoints": 0,
+                                 "growth_rate_per_hr": None, "t_inflection_hours": None,
+                                 "max_absorbance_OD600": None,
+                                 "max_cell_concentration_cells_per_mL": None,
+                                 "fit_r2": None, "fit_rmse": None})
+            continue
+
+        t0_unix = _to_unix(points[0][0])
+        times_hr = [(_to_unix(ts) - t0_unix) / 3600.0 for ts, _ in points]
+        od_values = [od for _, od in points]
+
+        K, r, t0_fit, r2, rmse = _fit_logistic(times_hr, od_values)
+        # Use observed max for readout columns so they always reflect real data,
+        # not the potentially extrapolated logistic asymptote.
+        obs_max_od = max(od_values)
+        growth_rows.append({
+            **meta,
+            "n_timepoints": n,
+            "growth_rate_per_hr": r,
+            "t_inflection_hours": t0_fit,
+            "max_absorbance_OD600": round(obs_max_od, 6),
+            "max_cell_concentration_cells_per_mL": int(obs_max_od * OD600_TO_CELLS_PER_ML),
+            "fit_r2": r2,
+            "fit_rmse": rmse,
+        })
+
+    growth_rows.sort(key=lambda r: (r["plate_id"] or "", r["well"] or ""))
+    return [{col: r.get(col) for col in GROWTH_COLUMNS} for r in growth_rows]
+
+
+def aggregate_replicates(growth_rows: list[dict]) -> list[dict]:
+    """Average growth metrics across replicate wells sharing a reagent_name.
+
+    Groups by (plate_id, reagent_name). Reports mean/median/variance of
+    growth_rate_per_hr and mean of max readouts. Wells where the fit failed
+    (growth_rate_per_hr is None) are excluded from rate statistics but still
+    counted in n_replicates.
+    """
+    groups: dict[tuple, list[dict]] = defaultdict(list)
+    for row in growth_rows:
+        key = (row["plate_id"], row["plate_barcode"], row["reagent_name"])
+        groups[key].append(row)
+
+    summary_rows = []
+    for (plate_id, plate_barcode, reagent_name), members in sorted(groups.items()):
+        rates = [r["growth_rate_per_hr"] for r in members
+                 if r["growth_rate_per_hr"] is not None]
+        max_ods = [r["max_absorbance_OD600"] for r in members
+                   if r["max_absorbance_OD600"] is not None]
+        max_concs = [r["max_cell_concentration_cells_per_mL"] for r in members
+                     if r["max_cell_concentration_cells_per_mL"] is not None]
+        summary_rows.append({
+            "plate_id": plate_id,
+            "plate_barcode": plate_barcode,
+            "reagent_name": reagent_name,
+            "n_replicates": len(members),
+            "mean_growth_rate_per_hr": round(statistics.mean(rates), 6) if rates else None,
+            "median_growth_rate_per_hr": round(statistics.median(rates), 6) if rates else None,
+            "variance_growth_rate_per_hr": (
+                round(statistics.variance(rates), 9) if len(rates) >= 2 else None
+            ),
+            "mean_max_absorbance_OD600": round(statistics.mean(max_ods), 6) if max_ods else None,
+            "mean_max_cell_concentration_cells_per_mL": (
+                int(statistics.mean(max_concs)) if max_concs else None
+            ),
+        })
+
+    return [{col: r.get(col) for col in REPLICATE_COLUMNS} for r in summary_rows]
+
+
+def write_csv(rows: list[dict], path: str, columns: list[str]) -> None:
     with open(path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=COLUMNS)
+        writer = csv.DictWriter(f, fieldnames=columns)
         writer.writeheader()
         writer.writerows(rows)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Pull monitor plate data into a formatted CSV via Claude Code + MCP."
+        description="Pull monitor plate data and compute per-well growth metrics."
     )
     parser.add_argument(
         "plate_ids",
@@ -274,32 +467,53 @@ def main() -> None:
         help="One or more plate IDs to fetch (e.g. PLT12V3H4WNRSR6CWJ7A72ODORU7EI)",
     )
     parser.add_argument(
-        "-o", "--output", default=None,
-        help="Output CSV path (default: <output_dir>/<first_plate_id>.csv)",
+        "-d", "--output-dir", default="data",
+        help="Directory for output files (default: data)",
     )
     parser.add_argument(
-        "-d", "--output-dir", default="data",
-        help="Directory to save the CSV if --output is not specified (default: data)",
+        "-o", "--output", default=None,
+        help="Raw observations CSV path (default: <output_dir>/<first_plate_id>.csv)",
+    )
+    parser.add_argument(
+        "-g", "--growth-output", default=None,
+        help="Growth metrics CSV path (default: <output_dir>/<first_plate_id>_growth.csv)",
+    )
+    parser.add_argument(
+        "-r", "--replicates-output", default=None,
+        help="Replicate summary CSV path (default: <output_dir>/<first_plate_id>_replicates.csv)",
     )
     args = parser.parse_args()
+
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    stem = args.plate_ids[0]
+
+    raw_path = args.output or str(output_dir / f"{stem}.csv")
+    growth_path = args.growth_output or str(output_dir / f"{stem}_growth.csv")
+    replicates_path = args.replicates_output or str(output_dir / f"{stem}_replicates.csv")
 
     all_rows: list[dict] = []
     for plate_id in args.plate_ids:
         print(f"Fetching {plate_id}...", file=sys.stderr)
         raw = fetch_raw(plate_id)
         rows = build_rows(raw)
-        print(f"  {len(rows)} row(s)", file=sys.stderr)
+        print(f"  {len(rows)} observation row(s)", file=sys.stderr)
         all_rows.extend(rows)
 
-    if args.output:
-        output_path = args.output
-    else:
-        output_dir = Path(args.output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = str(output_dir / f"{args.plate_ids[0]}.csv")
+    write_csv(all_rows, raw_path, COLUMNS)
+    print(f"Written: {raw_path}", file=sys.stderr)
 
-    write_csv(all_rows, output_path)
-    print(f"Written: {output_path}", file=sys.stderr)
+    print("Fitting S-curves...", file=sys.stderr)
+    growth_rows = estimate_growth(all_rows)
+    print(f"  {len(growth_rows)} well(s) fitted", file=sys.stderr)
+    write_csv(growth_rows, growth_path, GROWTH_COLUMNS)
+    print(f"Written: {growth_path}", file=sys.stderr)
+
+    print("Aggregating replicates...", file=sys.stderr)
+    replicate_rows = aggregate_replicates(growth_rows)
+    print(f"  {len(replicate_rows)} reagent group(s)", file=sys.stderr)
+    write_csv(replicate_rows, replicates_path, REPLICATE_COLUMNS)
+    print(f"Written: {replicates_path}", file=sys.stderr)
 
 
 if __name__ == "__main__":
