@@ -1,0 +1,2 @@
+plate_id,plate_barcode,reagent_name,n_replicates,mean_growth_rate_per_hr,median_growth_rate_per_hr,variance_growth_rate_per_hr,mean_max_absorbance_OD600,mean_max_cell_concentration_cells_per_mL
+PLT12V3H4WNRSR6CWJ7A72ODORU7EI,CellAI Tutorial Experiment Plate,Novel Bio Cyclone Media,30,0.365198,0.308742,0.043305498,0.55831,558309999
