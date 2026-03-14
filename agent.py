@@ -148,16 +148,15 @@ DEFAULT_COMPOSITION = ROUND_COMPOSITION[3]
 OPTIMIZED_FACTOR_CONFIG: Dict[str, Tuple[float, float]] = {
     # 7.5-15 g/L NaCl is roughly 128-257 mM. Keep the BO range centered there.
     "NaCl_mM": (125.0, 260.0),
-    "Carbon_pct": (0.10, 0.50),
+    "Glycerol_pct": (0.10, 0.50),  # Carbon source; CCD uses Glycerol
     # Latest small-scale V. natriegens work points to a narrow pH sweet spot.
     "pH": (7.8, 8.2),
 }
 
 # Fixed constants for the non-optimized ingredients.
-# MOPS is intentionally fixed in the higher range suggested by recent V. natriegens media work.
-# Re-confirm this value against your Phase-1 findings and day-of calibration before running live plates.
+# MOPS 20–40 mM per literature/CCD; 250 mM causes osmotic stress.
 CONSTANTS: Dict[str, float] = {
-    "MOPS_mM": 250.0,
+    "MOPS_mM": 30.0,
     "Phosphate_mM": 4.0,
     "MgSO4_mM": 1.0,
     "NH4SO4_mM": 12.0,
@@ -173,7 +172,7 @@ ALL_FACTOR_CONFIG: Dict[str, Tuple[float, float]] = {
 
 FACTOR_CONFIG = OPTIMIZED_FACTOR_CONFIG
 FACTOR_NAMES = list(FACTOR_CONFIG.keys())
-ALL_FACTOR_NAMES = ["NaCl_mM", "MOPS_mM", "Phosphate_mM", "MgSO4_mM", "NH4SO4_mM", "Carbon_pct", "pH"]
+ALL_FACTOR_NAMES = ["NaCl_mM", "MOPS_mM", "Phosphate_mM", "MgSO4_mM", "NH4SO4_mM", "Glycerol_pct", "pH"]
 
 STOCKS: Dict[str, Dict] = {
     "NaCl_mM": {"stock_conc": 5000.0, "src_well": "A1"},
@@ -181,7 +180,7 @@ STOCKS: Dict[str, Dict] = {
     "Phosphate_mM": {"stock_conc": 1000.0, "src_well": "A3"},
     "MgSO4_mM": {"stock_conc": 500.0, "src_well": "A4"},
     "NH4SO4_mM": {"stock_conc": 1000.0, "src_well": "A5"},
-    "Carbon_pct": {"stock_conc": 10.0, "src_well": "A6"},
+    "Glycerol_pct": {"stock_conc": 10.0, "src_well": "A6"},
     "NaOH": {"stock_conc": 1000.0, "src_well": "A7"},
     "HCl": {"stock_conc": 1000.0, "src_well": "A8"},
     "BaseMedia": {"stock_conc": 1.0, "src_well": "B1"},
@@ -207,7 +206,7 @@ REAGENT_COST: Dict[str, float] = {
     "Phosphate_mM": 0.005,
     "MgSO4_mM": 0.010,
     "NH4SO4_mM": 0.008,
-    "Carbon_pct": 0.030,
+    "Glycerol_pct": 0.030,
     "pH": 0.000,
 }
 MAX_COST_PER_WELL: Optional[float] = 15.0
@@ -235,7 +234,7 @@ PH_ADJUST_SOFT_THRESHOLD_UL = 8.0
 
 BASELINE_CONDITION: Dict[str, float] = {
     "NaCl_mM": 180.0,
-    "Carbon_pct": 0.20,
+    "Glycerol_pct": 0.20,
     "pH": 8.0,
 }
 CENTER_POINT: Dict[str, float] = {
@@ -244,14 +243,14 @@ CENTER_POINT: Dict[str, float] = {
 }
 
 MANUAL_MEDIA_PANEL: List[Dict[str, float]] = [
-    {"NaCl_mM": 180.0, "Carbon_pct": 0.20, "pH": 8.0},
-    {"NaCl_mM": 240.0, "Carbon_pct": 0.20, "pH": 8.0},
-    {"NaCl_mM": 130.0, "Carbon_pct": 0.20, "pH": 8.0},
-    {"NaCl_mM": 180.0, "Carbon_pct": 0.45, "pH": 8.0},
-    {"NaCl_mM": 180.0, "Carbon_pct": 0.10, "pH": 8.0},
-    {"NaCl_mM": 180.0, "Carbon_pct": 0.20, "pH": 7.85},
-    {"NaCl_mM": 180.0, "Carbon_pct": 0.20, "pH": 8.15},
-    {"NaCl_mM": 220.0, "Carbon_pct": 0.35, "pH": 8.05},
+    {"NaCl_mM": 180.0, "Glycerol_pct": 0.20, "pH": 8.0},
+    {"NaCl_mM": 240.0, "Glycerol_pct": 0.20, "pH": 8.0},
+    {"NaCl_mM": 130.0, "Glycerol_pct": 0.20, "pH": 8.0},
+    {"NaCl_mM": 180.0, "Glycerol_pct": 0.45, "pH": 8.0},
+    {"NaCl_mM": 180.0, "Glycerol_pct": 0.10, "pH": 8.0},
+    {"NaCl_mM": 180.0, "Glycerol_pct": 0.20, "pH": 7.85},
+    {"NaCl_mM": 180.0, "Glycerol_pct": 0.20, "pH": 8.15},
+    {"NaCl_mM": 220.0, "Glycerol_pct": 0.35, "pH": 8.05},
 ]
 
 SIMULATION_MODE = True
@@ -334,10 +333,15 @@ def compute_mu_max(time_hours: np.ndarray, od: np.ndarray, od_min: float = 0.03,
 
 
 def compute_auc(time_hours: np.ndarray, od: np.ndarray) -> float:
+    time_hours = np.asarray(time_hours, dtype=float)
+    od = np.asarray(od, dtype=float)
     mask = np.isfinite(time_hours) & np.isfinite(od)
     if mask.sum() < 2:
         return float("nan")
-    return float(np.trapz(od[mask], time_hours[mask]))
+    try:
+        return float(np.trapezoid(od[mask], time_hours[mask]))
+    except AttributeError:
+        return float(np.trapz(od[mask], time_hours[mask]))
 
 
 def compute_well_metrics(time_hours: np.ndarray, od: np.ndarray) -> Dict[str, float]:
@@ -532,9 +536,9 @@ def nacl_gradient(n_points: int = 6) -> List[Dict[str, float]]:
 
 
 def carbon_gradient(n_points: int = 4) -> List[Dict[str, float]]:
-    lo, hi = FACTOR_CONFIG["Carbon_pct"]
+    lo, hi = FACTOR_CONFIG["Glycerol_pct"]
     values = np.linspace(lo, hi, n_points)
-    return [{**BASELINE_CONDITION, "Carbon_pct": round(float(v), 3)} for v in values]
+    return [{**BASELINE_CONDITION, "Glycerol_pct": round(float(v), 3)} for v in values]
 
 
 # ============================================================
@@ -1061,7 +1065,7 @@ def simulate_od_curves(designs: List[WellDesign], duration_min: int = 120, inter
             - 0.006000 * (c["Phosphate_mM"] - 5.5) ** 2
             - 0.030000 * (c["MgSO4_mM"] - 1.1) ** 2
             - 0.001800 * (c["NH4SO4_mM"] - 11) ** 2
-            - 1.200000 * (c["Carbon_pct"] - 0.28) ** 2
+            - 1.200000 * (c["Glycerol_pct"] - 0.28) ** 2
             - 1.200000 * (c.get("pH", BASE_PH) - 8.0) ** 2
         )
         interaction = -0.00002 * (c["NaCl_mM"] - 220) * (c["NH4SO4_mM"] - 11)
