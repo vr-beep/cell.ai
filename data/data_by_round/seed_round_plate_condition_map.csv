@@ -1,31 +1,11 @@
 well,condition,base_media,base_media_vol,yeast_extract,tryptone,mops,na_l_glut,kh2po4,glucose,mgso4,trace_metals,glycerol,feso4,nacit,water,cells,total
-A1,baseline,Novel Bio NBxCyclone Media,100,0,0,0,0,0,0,0,0,0,0,0,0,100,200
-A2,baseline,Novel Bio NBxCyclone Media,110,0,0,0,0,0,0,0,0,0,0,0,0,90,200
-A3,baseline,Novel Bio NBxCyclone Media,120,0,0,0,0,0,0,0,0,0,0,0,0,80,200
-A4,baseline,Novel Bio NBxCyclone Media,130,0,0,0,0,0,0,0,0,0,0,0,0,70,200
-A5,baseline,Novel Bio NBxCyclone Media,140,0,0,0,0,0,0,0,0,0,0,0,0,60,200
-A6,baseline,Novel Bio NBxCyclone Media,150,0,0,0,0,0,0,0,0,0,0,0,0,50,200
-A7,baseline,Novel Bio NBxCyclone Media,160,0,0,0,0,0,0,0,0,0,0,0,0,40,200
-A8,baseline,Novel Bio NBxCyclone Media,170,0,0,0,0,0,0,0,0,0,0,0,0,30,200
-A9,baseline,Novel Bio NBxCyclone Media,180,0,0,0,0,0,0,0,0,0,0,0,0,20,200
-A10,baseline,Novel Bio NBxCyclone Media,190,0,0,0,0,0,0,0,0,0,0,0,0,10,200
-B1,baseline,Novel Bio NBxCyclone Media,100,0,0,0,0,0,0,0,0,0,0,0,0,100,200
-B2,baseline,Novel Bio NBxCyclone Media,110,0,0,0,0,0,0,0,0,0,0,0,0,90,200
-B3,baseline,Novel Bio NBxCyclone Media,120,0,0,0,0,0,0,0,0,0,0,0,0,80,200
-B4,baseline,Novel Bio NBxCyclone Media,130,0,0,0,0,0,0,0,0,0,0,0,0,70,200
-B5,baseline,Novel Bio NBxCyclone Media,140,0,0,0,0,0,0,0,0,0,0,0,0,60,200
-B6,baseline,Novel Bio NBxCyclone Media,150,0,0,0,0,0,0,0,0,0,0,0,0,50,200
-B7,baseline,Novel Bio NBxCyclone Media,160,0,0,0,0,0,0,0,0,0,0,0,0,40,200
-B8,baseline,Novel Bio NBxCyclone Media,170,0,0,0,0,0,0,0,0,0,0,0,0,30,200
-B9,baseline,Novel Bio NBxCyclone Media,180,0,0,0,0,0,0,0,0,0,0,0,0,20,200
-B10,baseline,Novel Bio NBxCyclone Media,190,0,0,0,0,0,0,0,0,0,0,0,0,10,200
-C1,baseline,Novel Bio NBxCyclone Media,100,0,0,0,0,0,0,0,0,0,0,0,0,100,200
-C2,baseline,Novel Bio NBxCyclone Media,110,0,0,0,0,0,0,0,0,0,0,0,0,90,200
-C3,baseline,Novel Bio NBxCyclone Media,120,0,0,0,0,0,0,0,0,0,0,0,0,80,200
-C4,baseline,Novel Bio NBxCyclone Media,130,0,0,0,0,0,0,0,0,0,0,0,0,70,200
-C5,baseline,Novel Bio NBxCyclone Media,140,0,0,0,0,0,0,0,0,0,0,0,0,60,200
-C6,baseline,Novel Bio NBxCyclone Media,150,0,0,0,0,0,0,0,0,0,0,0,0,50,200
-C7,baseline,Novel Bio NBxCyclone Media,160,0,0,0,0,0,0,0,0,0,0,0,0,40,200
-C8,baseline,Novel Bio NBxCyclone Media,170,0,0,0,0,0,0,0,0,0,0,0,0,30,200
-C9,baseline,Novel Bio NBxCyclone Media,180,0,0,0,0,0,0,0,0,0,0,0,0,20,200
-C10,baseline,Novel Bio NBxCyclone Media,190,0,0,0,0,0,0,0,0,0,0,0,0,10,200
+B2,SD-1,Semi-Defined Media,129,14,26,11,0,0,0,0,0,0,0,0,0,20,200
+B3,SD-2,Semi-Defined Media,128,20,14,7,0,0,0,0,0,0,0,0,11,20,200
+B4,SD-3,Semi-Defined Media,125,26,20,9,0,0,0,0,0,0,0,0,0,20,200
+B5,HB-1,High Buffer Defined Media,110,14,26,0,10,0,0,0,0,0,0,0,20,20,200
+B6,HB-2,High Buffer Defined Media,110,20,14,0,6,0,0,0,0,0,0,0,30,20,200
+B7,HB-3,High Buffer Defined Media,110,26,20,0,8,0,0,0,0,0,0,0,16,20,200
+B8,LB-1,Prepared LBv2 Media,130,0,0,12,0,10,18,0,0,0,0,0,10,20,200
+B9,LB-2,Prepared LBv2 Media,130,0,0,16,0,6,12,0,0,0,0,0,16,20,200
+B10,LB-3,Prepared LBv2 Media,130,0,0,18,0,8,8,0,0,0,0,0,16,20,200
+B11,baseline,Novel Bio NBxCyclone Media,180,0,0,0,0,0,0,0,0,0,0,0,0,20,200

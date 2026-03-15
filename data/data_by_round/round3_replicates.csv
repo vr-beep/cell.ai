@@ -1,5 +1,0 @@
-plate_id,plate_barcode,condition_id,reagent_name,n_replicates,mean_growth_rate_per_hr,median_growth_rate_per_hr,variance_growth_rate_per_hr,mean_max_absorbance_OD600,mean_max_cell_concentration_cells_per_mL
-PLT145RIEW6K4ZTEUG4OOFQJQAXHL4,CellAI Experiment Plate 3,HB-1_BayBE_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Water, Yeast Extract",3,7.710522,7.578084,0.062521198,0.371333,371333333
-PLT145RIEW6K4ZTEUG4OOFQJQAXHL4,CellAI Experiment Plate 3,HB-2_BayBE_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Water, Yeast Extract",3,7.554771,7.560844,0.207545267,0.315567,315566666
-PLT145RIEW6K4ZTEUG4OOFQJQAXHL4,CellAI Experiment Plate 3,HBD-Metals_1,"High Buffer Defined, MgSO4, Na L-Glutamate, Trace Metals, Tryptone, Yeast Extract",3,7.184482,7.301966,0.050498402,0.442433,442433333
-PLT145RIEW6K4ZTEUG4OOFQJQAXHL4,CellAI Experiment Plate 3,NB-CTL_1,Novel Bio Cyclone,1,8.402298,8.402298,,0.2624,262400000
