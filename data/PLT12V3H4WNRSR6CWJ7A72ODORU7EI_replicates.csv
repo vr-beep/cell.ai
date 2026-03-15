@@ -1,2 +1,11 @@
-plate_id,plate_barcode,reagent_name,n_replicates,mean_growth_rate_per_hr,median_growth_rate_per_hr,variance_growth_rate_per_hr,mean_max_absorbance_OD600,mean_max_cell_concentration_cells_per_mL
-PLT12V3H4WNRSR6CWJ7A72ODORU7EI,CellAI Tutorial Experiment Plate,Novel Bio Cyclone Media,30,0.346272,0.269833,0.031296732,0.652307,652306666
+plate_id,plate_barcode,condition_id,reagent_name,n_replicates,mean_growth_rate_per_hr,median_growth_rate_per_hr,variance_growth_rate_per_hr,mean_max_absorbance_OD600,mean_max_cell_concentration_cells_per_mL
+PLT12V3H4WNRSR6CWJ7A72ODORU7EI,CellAI Tutorial Experiment Plate,baseline_1,Novel Bio Cyclone Media,3,0.500388,0.346495,0.119168554,0.97,970000000
+PLT12V3H4WNRSR6CWJ7A72ODORU7EI,CellAI Tutorial Experiment Plate,baseline_10,Novel Bio Cyclone Media,3,0.541771,0.547396,0.000136151,0.293,293000000
+PLT12V3H4WNRSR6CWJ7A72ODORU7EI,CellAI Tutorial Experiment Plate,baseline_2,Novel Bio Cyclone Media,3,0.338221,0.327932,0.022335711,0.6358,635800000
+PLT12V3H4WNRSR6CWJ7A72ODORU7EI,CellAI Tutorial Experiment Plate,baseline_3,Novel Bio Cyclone Media,3,0.256965,0.266073,0.000510877,0.765167,765166666
+PLT12V3H4WNRSR6CWJ7A72ODORU7EI,CellAI Tutorial Experiment Plate,baseline_4,Novel Bio Cyclone Media,3,0.196026,0.196467,4.2097e-05,0.747633,747633333
+PLT12V3H4WNRSR6CWJ7A72ODORU7EI,CellAI Tutorial Experiment Plate,baseline_5,Novel Bio Cyclone Media,3,0.186013,0.190484,0.00016947,0.7628,762800000
+PLT12V3H4WNRSR6CWJ7A72ODORU7EI,CellAI Tutorial Experiment Plate,baseline_6,Novel Bio Cyclone Media,3,0.237431,0.22204,0.0022557,0.7723,772300000
+PLT12V3H4WNRSR6CWJ7A72ODORU7EI,CellAI Tutorial Experiment Plate,baseline_7,Novel Bio Cyclone Media,3,0.251407,0.257683,0.000129581,0.718133,718133333
+PLT12V3H4WNRSR6CWJ7A72ODORU7EI,CellAI Tutorial Experiment Plate,baseline_8,Novel Bio Cyclone Media,3,0.415095,0.306858,0.03685458,0.5609,560900000
+PLT12V3H4WNRSR6CWJ7A72ODORU7EI,CellAI Tutorial Experiment Plate,baseline_9,Novel Bio Cyclone Media,3,0.539403,0.533829,0.000473591,0.297333,297333333

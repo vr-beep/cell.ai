@@ -12,8 +12,10 @@ Usage:
     python scripts/monitor_data_processing.py <plate_id> [<plate_id> ...] [-o output.csv] [-d output_dir]
 
 Examples:
+    # Plate 1: PLT12V3H4WNRSR6CWJ7A72ODORU7EI
     python scripts/monitor_data_processing.py PLT12V3H4WNRSR6CWJ7A72ODORU7EI
-    python scripts/monitor_data_processing.py PLT_A PLT_B -o results.csv
+    # Plate 2: PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ
+    python scripts/monitor_data_processing.py PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ
 """
 
 import argparse
@@ -34,6 +36,7 @@ from scipy.optimize import curve_fit
 COLUMNS = [
     "culture_id",
     "well",
+    "condition_id",
     "plate_id",
     "plate_barcode",
     "status",
@@ -49,6 +52,7 @@ COLUMNS = [
 GROWTH_COLUMNS = [
     "culture_id",
     "well",
+    "condition_id",
     "plate_id",
     "plate_barcode",
     "status",
@@ -64,10 +68,11 @@ GROWTH_COLUMNS = [
     "fit_rmse",
 ]
 
-# One row per (plate, reagent_name) — replicate summary
+# One row per (plate, condition_id) — replicate summary
 REPLICATE_COLUMNS = [
     "plate_id",
     "plate_barcode",
+    "condition_id",
     "reagent_name",
     "n_replicates",
     "mean_growth_rate_per_hr",
@@ -244,10 +249,28 @@ def melt_wide_csv(csv_text: str) -> list[dict]:
     return rows
 
 
-def build_rows(raw: dict) -> list[dict]:
+def build_rows(raw: dict, data_dir: Path) -> list[dict]:
     """Join observation rows with the culture map and normalise to COLUMNS."""
     plate_id = raw["plate_id"]
     plate_barcode = raw["plate_barcode"]
+
+    # Load plate map
+    plate_map_path = data_dir / f"{plate_id}_plate_condition_map.csv"
+    well_to_condition = {}
+    if plate_map_path.exists():
+        with open(plate_map_path, "r", newline="") as f:
+            reader = csv.DictReader(f)
+            signature_to_id = {}
+            condition_counters = {}
+            for row in reader:
+                sig = tuple(sorted((k, v) for k, v in row.items() if k != "well"))
+                if sig not in signature_to_id:
+                    cond_base = row.get("condition", "Cond")
+                    condition_counters[cond_base] = condition_counters.get(cond_base, 0) + 1
+                    signature_to_id[sig] = f"{cond_base}_{condition_counters[cond_base]}"
+                well_to_condition[row["well"]] = signature_to_id[sig]
+    else:
+        print(f"Warning: Plate map not found at {plate_map_path}", file=sys.stderr)
 
     # Build culture map keyed by well
     culture_map: dict[str, dict] = {}
@@ -264,10 +287,12 @@ def build_rows(raw: dict) -> list[dict]:
         well = obs["well"]
         culture = culture_map.get(well, {})
         reagents = culture.get("reagents") or []
+        condition_id = well_to_condition.get(well)
 
         base = {
             "culture_id": culture.get("id"),
             "well": well,
+            "condition_id": condition_id,
             "plate_id": plate_id,
             "plate_barcode": plate_barcode,
             "status": culture.get("status"),
@@ -361,21 +386,34 @@ def estimate_growth(rows: list[dict]) -> list[dict]:
             well_data[key] = {
                 "culture_id": row["culture_id"],
                 "well": row["well"],
+                "condition_id": row.get("condition_id"),
                 "plate_id": row["plate_id"],
                 "plate_barcode": row["plate_barcode"],
                 "status": row["status"],
                 "parent_culture_id": row["parent_culture_id"],
-                "reagent_name": row["reagent_name"],
-                "reagent_volume_uL": row["reagent_volume_uL"],
                 "_ts_od": {},
+                "_reagents": [],
+                "_volumes": [],
             }
         ts = row["observation_timestamp"]
         od = row["absorbance_OD600"]
         if ts and od is not None:
             well_data[key]["_ts_od"][ts] = float(od)
 
+        r_name = row.get("reagent_name")
+        r_vol = row.get("reagent_volume_uL")
+        if r_name and r_name not in well_data[key]["_reagents"]:
+            well_data[key]["_reagents"].append(r_name)
+            well_data[key]["_volumes"].append(str(r_vol) if r_vol is not None else "")
+
     growth_rows = []
     for meta in well_data.values():
+        reagents = meta.pop("_reagents")
+        volumes = meta.pop("_volumes")
+        
+        meta["reagent_name"] = ", ".join(reagents) if reagents else None
+        meta["reagent_volume_uL"] = ", ".join(volumes) if volumes else None
+        
         points = sorted(meta.pop("_ts_od").items())
         n = len(points)
 
@@ -411,30 +449,35 @@ def estimate_growth(rows: list[dict]) -> list[dict]:
 
 
 def aggregate_replicates(growth_rows: list[dict]) -> list[dict]:
-    """Average growth metrics across replicate wells sharing a reagent_name.
+    """Average growth metrics across replicate wells sharing a condition_id.
 
-    Groups by (plate_id, reagent_name). Reports mean/median/variance of
+    Groups by (plate_id, condition_id). Reports mean/median/variance of
     growth_rate_per_hr and mean of max readouts. Wells where the fit failed
     (growth_rate_per_hr is None) are excluded from rate statistics but still
     counted in n_replicates.
     """
     groups: dict[tuple, list[dict]] = defaultdict(list)
     for row in growth_rows:
-        key = (row["plate_id"], row["plate_barcode"], row["reagent_name"])
+        key = (row["plate_id"], row["plate_barcode"], row.get("condition_id"))
         groups[key].append(row)
 
     summary_rows = []
-    for (plate_id, plate_barcode, reagent_name), members in sorted(groups.items()):
+    for (plate_id, plate_barcode, condition_id), members in sorted(groups.items(), key=lambda x: (x[0][0] or "", x[0][1] or "", x[0][2] or "")):
         rates = [r["growth_rate_per_hr"] for r in members
                  if r["growth_rate_per_hr"] is not None]
         max_ods = [r["max_absorbance_OD600"] for r in members
                    if r["max_absorbance_OD600"] is not None]
         max_concs = [r["max_cell_concentration_cells_per_mL"] for r in members
                      if r["max_cell_concentration_cells_per_mL"] is not None]
+        
+        reagent_sets = set(r.get("reagent_name") for r in members if r.get("reagent_name"))
+        reagent_name_str = " | ".join(sorted(reagent_sets)) if reagent_sets else None
+
         summary_rows.append({
             "plate_id": plate_id,
             "plate_barcode": plate_barcode,
-            "reagent_name": reagent_name,
+            "condition_id": condition_id,
+            "reagent_name": reagent_name_str,
             "n_replicates": len(members),
             "mean_growth_rate_per_hr": round(statistics.mean(rates), 6) if rates else None,
             "median_growth_rate_per_hr": round(statistics.median(rates), 6) if rates else None,
@@ -496,7 +539,7 @@ def main() -> None:
     for plate_id in args.plate_ids:
         print(f"Fetching {plate_id}...", file=sys.stderr)
         raw = fetch_raw(plate_id)
-        rows = build_rows(raw)
+        rows = build_rows(raw, data_dir=output_dir)
         print(f"  {len(rows)} observation row(s)", file=sys.stderr)
         all_rows.extend(rows)
 

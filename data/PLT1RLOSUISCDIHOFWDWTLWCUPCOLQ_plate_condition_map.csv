@@ -2,3 +2,10 @@ well,condition,base_media,yeast_extract,tryptone,mops,na_l_glut,kh2po4,glucose,w
 B2,SD-1,Semi-Defined Media,129,14,26,11,0,0,0,20,200
 B3,SD-1,Semi-Defined Media,128,20,14,7,0,0,11,20,200
 B4,SD-1,Semi-Defined Media,125,26,20,9,0,0,0,20,200
+B5,High Buffer Defined Media,110,14,26,0,10,0,0,20,20,200
+B6,High Buffer Defined Media,110,20,14,0,6,0,0,30,20,200
+B7,High Buffer Defined Media,110,26,20,0,8,0,0,16,20,200
+B8,Prepared LBv2 Media,130,0,0,12,0,10,18,10,20,200
+B9,Prepared LBv2 Media,130,0,0,16,0,6,12,16,20,200
+B10,Prepared LBv2 Media,130,0,0,18,0,8,8,16,20,200
+B11,baseline,180,0,0,0,0,0,0,0,20,200 
