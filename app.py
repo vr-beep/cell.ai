@@ -8,7 +8,9 @@ Visualizes growth data, orchestrator activity, and BayBE proposals.
 from __future__ import annotations
 
 import json
+import os
 import re
+import sys
 import threading
 import time
 from datetime import datetime, timezone
@@ -464,7 +466,17 @@ def main():
                 log_data = _load_log()
                 if log_data is None:
                     st.info("No orchestrator activity. Start the loop to see live updates.")
-                    st.code("SIMULATION_MODE=1 python scripts/orchestrator.py --plate-id <PLATE_ID> --auto-approve")
+                    if st.button("🚀 Launch Closed Loop", type="primary", use_container_width=True):
+                        import subprocess
+                        script = Path(__file__).parent / "POC" / "closed-loop" / "scripts" / "orchestrator.py"
+                        env = {**os.environ, "SIMULATION_MODE": "1", "AUTO_APPROVE": "1"}
+                        subprocess.Popen(
+                            [sys.executable, str(script), "--plate-id", plate_id, "--auto-approve"],
+                            env=env,
+                            cwd=str(Path(__file__).parent / "POC" / "closed-loop"),
+                        )
+                        st.success("Orchestrator launched! Log will appear shortly...")
+                        st.rerun()
                     return
 
                 status = log_data.get("status", "unknown")
