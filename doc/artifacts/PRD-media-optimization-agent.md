@@ -393,6 +393,76 @@ Owner: Slava. Build pre-hack, test with mock data.
 
 ---
 
+# 8b. Build Scope
+
+**Strategy:** Build everything pre-hack against mocks. Hackathon = swap mock for real MCP + debug + run real experiments.
+
+## Pre-hack (Mar 12-13)
+
+| # | Component | Deliverable | Est. | Owner | Priority |
+|---|---|---|---|---|---|
+| | **CORE TOOLS** | | | | |
+| 1 | BayBE wrapper | `suggest_compositions()` — search space (NaCl 10-35, Glucose 1-20, YE 2-10), batch_size=14 (round 2+) / 10 (round 1), returns g/L | 2h | | CORE |
+| 2 | Compiler | `compile_recipe()` — g/L → µL for 1 mL. Stocks: Tryptone 100 mg/mL, YE 100 mg/mL, NaCl 292.2 mg/mL, Glucose 100 mg/mL, MOPS fill-up. Validate: total=1000 µL, each ≥10 µL or 0 µL | 2h | | CORE |
+| 3 | Parser | `read_results()` — plate reader CSV → blank subtraction (cell OD - blank OD) → growth rate µ = ln(OD_f/OD_i)/t. Handle: negative OD, empty wells, extra headers | 3h | | CORE |
+| 4 | Diagnose data | `diagnose_data()` — blank > sample check, outlier flagging, negative corrected OD, exclude bad conditions before feeding BayBE | 1h | | CORE |
+| 5 | Plate layout generator | Map 15 conditions (14 + 1 control) × 4 wells → 60 inner well positions. Round 1 variant: 10 AI + 4 Nikki + 1 control | 1h | | CORE |
+| | **AGENT** | | | | |
+| 6 | LLM agent scaffold | Tool definitions, system prompt, orchestration loop. Agent calls tools in sequence, handles responses, decides next action | 4h | | CORE |
+| 7 | Agent prompt | System prompt: role, available tools, V. natriegens context, hypothesis generation instructions, demo-visible reasoning | 2h | | CORE |
+| 8 | Hypothesis generation | Agent generates text hypothesis before each round ("I expect X because Y"). Shown on dashboard | 1h | | CORE |
+| 9 | Search space adaptation | Agent narrows BayBE ranges between rounds based on round N results ("Glucose >15 consistently fails, narrowing to 1-12") | 3h | | STRETCH |
+| | **MCP INTEGRATION** | | | | |
+| 10 | Monomer MCP mock | State machine: mix → incubate → read. Latency 5-30s, 5% transient failures, CSV output format. For pre-hack testing | 3h | | CORE |
+| 13 | MCP error handling | Retry logic (≤3 retries), timeout handling, fallback to human-triggered mode | 1h | | CORE |
+| | **DASHBOARD** | | | | |
+| 14 | Round status panel | Current round, time remaining in incubation, active wells | 30m | | CORE |
+| 15 | Growth rate leaderboard | Top 5 conditions by growth rate, ranked | 30m | | CORE |
+| 16 | Round-over-round chart | Bar chart: best µ per round vs. initial recipe control | 30m | | CORE |
+| 17 | AI vs Human panel | Side-by-side: agent's best vs. Nikki's best, % difference | 30m | | CORE |
+| 18 | Agent hypothesis panel | Text: what agent expects / what it found | 30m | | CORE |
+| 19 | Parameter space plot | Scatter/parallel coordinates: NaCl × Glucose × YE tried | 1h | | MEDIUM |
+| | **VALIDATION** | | | | |
+| 20 | E1: Interface contracts | 50 BayBE → compiler → MCP format → parser. All volumes valid, all payloads valid, parser handles edge cases | 2h | | CORE |
+| 21 | E3: Stateful MCP mock test | Agent runs 2 full rounds against mock. Correct sequencing, retry works, CSV parsed, <30 min overhead/round | 1h | | CORE |
+| 22 | Compiler hand-calc validation | Compiler output matches Experiment.md: 100 µL Tryptone + 50 µL YE + 34.2 µL NaCl + 815.8 µL MOPS = 1000 µL | 30m | | CORE |
+| 23 | End-to-end dry run | Agent runs 2 rounds against mock, dashboard updates live, hypothesis generated, BayBE learns from round 1 | 2h | | CORE |
+| | **DEMO PREP** | | | | |
+| 24 | Nikki's 4 conditions | Her 4 media recipes for AI vs Human round 1 | 30m | | CORE |
+| 25 | Pre-recorded backup video | Screen-record agent running 2 rounds against mock. 60s clip for demo fallback | 30m | | CORE |
+| 26 | Demo slide | "One slide, four numbers" template — fill with real data Sunday | 30m | | CORE |
+| 27 | Pitch script | 30s problem → 60s live demo → 30s results + Nikki reaction. Write and rehearse | 1h | | CORE |
+
+**Pre-hack total: ~27h across team**
+
+## Hackathon-only (Mar 14-15)
+
+| # | Component | Deliverable | Est. | Owner | Priority |
+|---|---|---|---|---|---|
+| 11 | Monomer MCP client | Swap mock → real MCP. Debug auth, command format, response parsing | 2h | | CORE |
+| 12 | Elnora MCP client | Connect to Elnora. Query V. natriegens literature. Test endpoints | 1h | | ENHANCEMENT |
+| 28 | Verify stock labels | Physical reagent bottles match Experiment.md concentrations | 15m | | CORE |
+| 29 | Verify plate reader CSV | Real CSV matches mock format. Fix parser if needed | 30m | | CORE |
+| 30 | Wire real MCP | Swap mock → real Monomer MCP. Debug connection issues | 2h | | CORE |
+| 31 | Round 1 execution | 10 AI + 4 Nikki + 1 control. Mix, plate, incubate, read | 3h | | CORE |
+| 32 | Round 2 execution | 14 AI + 1 control. Fresh plate | 3h | | CORE |
+| 33 | Round 3 (stretch) | Only if round 2 done by 10:30 PM | 2h | | STRETCH |
+| 34 | Fill demo slide | Replace template numbers with actual results | 15m | | CORE |
+| 35 | Rehearse pitch 3x | With Nikki's reaction. Before Sunday 3 PM | 30m | | CORE |
+
+**Hackathon total: ~12h + incubation time**
+
+## Cut order (if time runs short pre-hack)
+
+1. #19 Parameter space plot → nice-to-have
+2. #9 Search space adaptation → stretch, skip if tight
+3. #25 Backup video → record Saturday morning instead
+4. Mock latency/failures in #10 → simplify to basic mock
+
+**Never cut:** #2 Compiler, #3 Parser, #6 Agent scaffold, #20 E1 eval
+
+---
+
 # 9. North Star Metric (NSM) Framework
 
 **NSM: Best growth rate achieved vs. initial recipe control (absolute and %)**
