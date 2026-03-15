@@ -27,6 +27,7 @@ DATA_DIR = Path(__file__).parent / "data"
 BO_DIR = Path(__file__).parent / "bo_outputs"
 WORKFLOWS_DIR = Path(__file__).parent / "workflows"
 STATE_FILE = DATA_DIR / "orchestrator_state.json"
+LOG_FILE = DATA_DIR / "orchestrator_log.json"
 
 # 96-well plate layout
 ROWS = list("ABCDEFGH")
@@ -104,6 +105,16 @@ def load_bo_proposals() -> pd.DataFrame | None:
 def load_orchestrator_state() -> dict | None:
     if STATE_FILE.exists():
         return json.loads(STATE_FILE.read_text())
+    return None
+
+
+def _load_log() -> dict | None:
+    """Load orchestrator live log (separate lightweight file)."""
+    if LOG_FILE.exists():
+        try:
+            return json.loads(LOG_FILE.read_text())
+        except (json.JSONDecodeError, OSError):
+            return None
     return None
 
 
@@ -430,26 +441,66 @@ def main():
             st.info("No BayBE proposals yet. Run optimization first.")
             st.code("python scripts/orchestrator.py --plate-id <PLATE_ID>")
 
-    # --- Tab 6: Orchestrator log ---
+    # --- Tab 6: Orchestrator live log ---
     with tab_orchestrator:
-        state = load_orchestrator_state()
-        if state:
-            render_orchestrator_log(state)
-        else:
-            st.info("No orchestrator state. Start the loop to see activity here.")
+        @st.fragment(run_every="3s")
+        def live_orchestrator_log():
+            placeholder = st.empty()
+            with placeholder.container():
+                log_data = _load_log()
+                if log_data is None:
+                    st.info("No orchestrator activity. Start the loop to see live updates.")
+                    st.code("SIMULATION_MODE=1 python scripts/orchestrator.py --plate-id <PLATE_ID> --auto-approve")
+                    return
 
-        st.divider()
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if st.button("🔄 Refresh", use_container_width=True):
-                st.cache_data.clear()
-                st.rerun()
-        with col2:
-            st.button("✅ Approve Next Step", use_container_width=True, disabled=True,
-                       help="Approval is handled in the terminal when orchestrator is running")
-        with col3:
-            st.button("🛑 Stop Orchestrator", use_container_width=True, disabled=True,
-                       help="Kill the orchestrator process manually (Ctrl+C)")
+                status = log_data.get("status", "unknown")
+                current_step = log_data.get("current_step", "idle")
+                log_entries = log_data.get("log", [])
+
+                # Pipeline step icons
+                step_icons = {
+                    "init": "🚀", "fetch_results": "📥", "analyze_results": "📊",
+                    "baybe_propose": "🧠", "elnora_design": "🔬", "elnora_validate": "✅",
+                    "compile_protocol": "⚗️", "monomer_submit": "🤖", "check_convergence": "🎯",
+                    "check_precipitation": "⚠️", "done": "✅",
+                }
+
+                st_state = "running" if status == "running" else "complete"
+                step_label = log_data.get("log", [{}])[-1].get("label", current_step) if log_entries else current_step
+
+                with st.status(
+                    f"Orchestrator: {step_label}",
+                    state=st_state,
+                    expanded=True,
+                ):
+                    for entry in log_entries:
+                        icon = step_icons.get(entry.get("step", "").replace("_done", ""), "▶")
+                        detail = entry.get("detail", "")
+                        step = entry.get("step", "")
+
+                        if step.endswith("_done") and detail:
+                            st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ **{detail}**")
+                        else:
+                            label = entry.get("label", step)
+                            ts = entry.get("ts", "")
+                            time_str = ts[11:19] if len(ts) > 19 else ""
+                            st.markdown(f"{icon} `{time_str}` {label}")
+
+                    if status == "complete":
+                        summary = log_data.get("summary", "")
+                        if summary:
+                            st.divider()
+                            st.markdown(summary)
+
+        live_orchestrator_log()
+
+        # Keep the old detailed log in an expander
+        with st.expander("Raw message log", expanded=False):
+            state = load_orchestrator_state()
+            if state:
+                render_orchestrator_log(state)
+            else:
+                st.caption("No state file.")
 
 
 if __name__ == "__main__":
