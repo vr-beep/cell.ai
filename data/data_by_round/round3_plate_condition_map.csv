@@ -1,0 +1,11 @@
+well,condition,base_media,base_media_vol,yeast_extract,tryptone,mops,na_l_glut,kh2po4,glucose,mgso4,trace_metals,glycerol,feso4,nacit,water,cells,total
+B2,HBD-Metals,High Buffer Defined Media,122,14,26,0,10,0,0,4,4,0,0,0,0,20,200
+B3,HBD-Metals,High Buffer Defined Media,122,14,26,0,10,0,0,4,4,0,0,0,0,20,200
+B4,HBD-Metals,High Buffer Defined Media,122,14,26,0,10,0,0,4,4,0,0,0,0,20,200
+B5,HB-1_BayBE,High Buffer Defined Media,110,24.7,15.5,0,6.8,0,0,0,0,0,0,0,23.0,20,200
+B6,HB-1_BayBE,High Buffer Defined Media,110,24.7,15.5,0,6.8,0,0,0,0,0,0,0,23.0,20,200
+B7,HB-1_BayBE,High Buffer Defined Media,110,24.7,15.5,0,6.8,0,0,0,0,0,0,0,23.0,20,200
+B8,HB-2_BayBE,High Buffer Defined Media,110,15,28,0,12,0,0,0,0,0,0,0,15,20,200
+B9,HB-2_BayBE,High Buffer Defined Media,110,15,28,0,12,0,0,0,0,0,0,0,15,20,200
+B10,HB-2_BayBE,High Buffer Defined Media,110,15,28,0,12,0,0,0,0,0,0,0,15,20,200
+B11,NB-CTL,Novel Bio NBxCyclone Media,180,0,0,0,0,0,0,0,0,0,0,0,0,20,200
