@@ -75,7 +75,8 @@ MEDIA_TARGET_VOLUME_UL = FINAL_WELL_VOLUME_UL - CELL_VOLUME_UL
 
 # Hardware-constrained pipetting range
 MIN_TRANSFER_UL = 10.0
-MAX_TRANSFER_UL = 180.0
+MAX_TRANSFER_UL = 200.0
+MAX_REAGENT_VOLUME_UL = 200.0
 
 # ── Well layout ───────────────────────────────────────────────────────────────
 INTERIOR_WELLS = [
@@ -146,7 +147,7 @@ DEFAULT_COMPOSITION = ROUND_COMPOSITION[2]
 # Phase-2 optimization setup
 # Optimized volumes (uL) for liquid components
 # ---------------------------------------------------------------------------
-NUMERIC_FACTORS = ["yeast_extract", "tryptone", "mops", "na_l_glut", "kh2po4", "glucose"]
+NUMERIC_FACTORS = ["base_media_vol", "yeast_extract", "tryptone", "mops", "na_l_glut", "kh2po4", "glucose"]
 OPTIMIZED_FACTOR_CONFIG: Dict[str, Tuple[float, float]] = {f: (0.0, MAX_TRANSFER_UL) for f in NUMERIC_FACTORS}
 
 try:
@@ -163,6 +164,7 @@ FACTOR_CONFIG = OPTIMIZED_FACTOR_CONFIG
 
 BASELINE_CONDITION = {
     "base_media": BASE_MEDIA_OPTIONS[0],
+    "base_media_vol": 0.0,
     "yeast_extract": 0.0,
     "tryptone": 0.0,
     "mops": 0.0,
@@ -211,19 +213,12 @@ def merge_with_constants(partial: Dict[str, float]) -> Dict[str, float]:
 
 
 def optimized_view(full: Dict[str, float]) -> Dict[str, float]:
-    return {f: float(full[f]) for f in FACTOR_NAMES}
+    d = {f: float(full[f]) for f in NUMERIC_FACTORS}
+    d["base_media"] = str(full["base_media"])
+    return d
 
 
-def validate_constant_setup() -> None:
-    missing = [f for f in ALL_FACTOR_NAMES if f not in CONSTANTS and f not in FACTOR_NAMES]
-    if missing:
-        raise ValueError(f"Missing constant definitions for: {missing}")
-    duplicate = set(CONSTANTS).intersection(FACTOR_NAMES)
-    if duplicate:
-        raise ValueError(f"Constants overlap with optimized factors: {sorted(duplicate)}")
 
-
-validate_constant_setup()
 
 
 # ============================================================
@@ -309,67 +304,28 @@ def compute_composite_score(mu_max_per_hr: float, endpoint_od: float, auc: float
 
 
 # ============================================================
-# 4. pH ADJUSTMENT LOGIC
-# ============================================================
-
-def _interpolate_lookup(target_ph: float, lookup: Dict[float, float]) -> Optional[float]:
-    keys = sorted(lookup.keys())
-    if not keys:
-        return None
-    if target_ph in lookup:
-        return float(lookup[target_ph])
-    if target_ph < keys[0] or target_ph > keys[-1]:
-        return None
-    for left, right in zip(keys[:-1], keys[1:]):
-        if left <= target_ph <= right:
-            left_v = lookup[left]
-            right_v = lookup[right]
-            ratio = (target_ph - left) / (right - left)
-            return float(left_v + ratio * (right_v - left_v))
-    return None
-
-
-def ph_adjustment_volume(target_ph: float, base_ph: float = BASE_PH) -> Tuple[str, float]:
-    if math.isclose(target_ph, base_ph, abs_tol=1e-6):
-        return "none", 0.0
-
-    lookup_volume = _interpolate_lookup(target_ph, PH_ADJUSTMENT_LOOKUP_UL)
-    if lookup_volume is None:
-        lookup_volume = abs(target_ph - base_ph) * BUFFER_CAPACITY_UL_PER_PH_UNIT
-
-    volume = round(float(lookup_volume), 1)
-    if volume <= 0.0:
-        return "none", 0.0
-    
-    # Bypass MIN_TRANSFER_UL for pH adjustments since they are often very small (e.g., 4.3 uL)
-    volume = min(volume, MAX_TRANSFER_UL)
-    reagent = "NaOH" if target_ph > base_ph else "HCl"
-    return reagent, volume
-
-
-# ============================================================
 # 5. DESIGN CONSTRAINTS
 # ============================================================
 
+def _enforce_volume_constraint(c: Dict[str, float]) -> Dict[str, float]:
+    num_sum = sum(c.get(f, 0.0) for f in NUMERIC_FACTORS)
+    if num_sum > MAX_REAGENT_VOLUME_UL:
+        scale = MAX_REAGENT_VOLUME_UL / num_sum
+        for f in NUMERIC_FACTORS:
+            c[f] = round(c.get(f, 0.0) * scale, 4)
+    return c
+
 def is_valid_condition(c: Dict[str, float]) -> bool:
-    full = merge_with_constants(c)
-    for factor, (lo, hi) in FACTOR_CONFIG.items():
-        if full[factor] < lo or full[factor] > hi:
+    num_sum = sum(c.get(f, 0.0) for f in NUMERIC_FACTORS)
+    if num_sum > MAX_REAGENT_VOLUME_UL + 0.1: # allow slight floating point
+        return False
+    for f in NUMERIC_FACTORS:
+        val = c.get(f, 0.0)
+        lo, hi = FACTOR_CONFIG[f]
+        if val < lo - 0.1 or val > hi + 0.1:
             return False
-    if full["NaCl_mM"] < 100:
+    if "base_media" in c and c["base_media"] not in BASE_MEDIA_OPTIONS:
         return False
-    if full.get("pH", BASE_PH) > 8.25:
-        return False
-    if full.get("pH", BASE_PH) > 8.1 and full["Phosphate_mM"] > 5.0:
-        return False
-    if full["Phosphate_mM"] > 6.0 and full["MgSO4_mM"] > 1.5:
-        return False
-    if full["NaCl_mM"] + 2.0 * full["NH4SO4_mM"] > 340:
-        return False
-    if MAX_COST_PER_WELL is not None:
-        cost = sum(REAGENT_COST.get(f, 0.0) * full[f] for f in ALL_FACTOR_NAMES)
-        if cost > MAX_COST_PER_WELL:
-            return False
     return True
 
 
@@ -378,14 +334,16 @@ def is_valid_condition(c: Dict[str, float]) -> bool:
 # ============================================================
 
 def vector_to_condition(x: np.ndarray) -> Dict[str, float]:
-    return {f: float(v) for f, v in zip(FACTOR_NAMES, x)}
+    c = {f: float(v) for f, v in zip(NUMERIC_FACTORS, x)}
+    c["base_media"] = rng.choice(BASE_MEDIA_OPTIONS)
+    return c
 
 
 def unique_conditions(conditions: List[Dict[str, float]], decimals: int = 4) -> List[Dict[str, float]]:
     seen = set()
     unique = []
     for c in conditions:
-        key = tuple(round(c[f], decimals) for f in FACTOR_NAMES)
+        key = tuple([round(c[f], decimals) for f in NUMERIC_FACTORS] + [c["base_media"]])
         if key not in seen:
             seen.add(key)
             unique.append(optimized_view(merge_with_constants(c)))
@@ -397,27 +355,30 @@ def unique_conditions(conditions: List[Dict[str, float]], decimals: int = 4) -> 
 # ============================================================
 
 def _sample_random_conditions(n: int) -> List[Dict[str, float]]:
-    return [
-        {
+    conds = []
+    for _ in range(n):
+        c = {
             factor: float(rng.uniform(lo, hi))
             for factor, (lo, hi) in FACTOR_CONFIG.items()
         }
-        for _ in range(n)
-    ]
+        c["base_media"] = rng.choice(BASE_MEDIA_OPTIONS)
+        conds.append(c)
+    return conds
 
 
 def _sobol_sample_conditions(n_points: int, oversample_factor: int = 4) -> List[Dict[str, float]]:
-    n_dim = len(FACTOR_NAMES)
+    n_dim = len(NUMERIC_FACTORS)
     m = math.ceil(math.log2(max(8, n_points * oversample_factor)))
     sampler = qmc.Sobol(d=n_dim, scramble=True, seed=RANDOM_SEED)
     raw = sampler.random_base2(m=m)
-    bounds_low = np.array([FACTOR_CONFIG[f][0] for f in FACTOR_NAMES])
-    bounds_high = np.array([FACTOR_CONFIG[f][1] for f in FACTOR_NAMES])
+    bounds_low = np.array([FACTOR_CONFIG[f][0] for f in NUMERIC_FACTORS])
+    bounds_high = np.array([FACTOR_CONFIG[f][1] for f in NUMERIC_FACTORS])
     scaled = qmc.scale(raw, bounds_low, bounds_high)
 
     conditions = []
     for row in scaled:
         c = vector_to_condition(row)
+        c = _enforce_volume_constraint(c)
         if is_valid_condition(c):
             conditions.append(c)
         if len(conditions) >= n_points:
@@ -426,15 +387,16 @@ def _sobol_sample_conditions(n_points: int, oversample_factor: int = 4) -> List[
 
 
 def latin_hypercube_sample(n_points: int) -> List[Dict[str, float]]:
-    sampler = qmc.LatinHypercube(d=len(FACTOR_NAMES), seed=RANDOM_SEED)
+    sampler = qmc.LatinHypercube(d=len(NUMERIC_FACTORS), seed=RANDOM_SEED)
     raw_samples = sampler.random(n=n_points * 3)
-    bounds_low = np.array([FACTOR_CONFIG[f][0] for f in FACTOR_NAMES])
-    bounds_high = np.array([FACTOR_CONFIG[f][1] for f in FACTOR_NAMES])
+    bounds_low = np.array([FACTOR_CONFIG[f][0] for f in NUMERIC_FACTORS])
+    bounds_high = np.array([FACTOR_CONFIG[f][1] for f in NUMERIC_FACTORS])
     scaled = qmc.scale(raw_samples, bounds_low, bounds_high)
 
     conditions = []
     for row in scaled:
         c = vector_to_condition(row)
+        c = _enforce_volume_constraint(c)
         if is_valid_condition(c):
             conditions.append(c)
         if len(conditions) >= n_points:
@@ -461,11 +423,11 @@ BAYBE_TARGET_NAME = "score"
 
 
 def condition_to_vector(c: Dict[str, float]) -> np.ndarray:
-    return np.array([c[f] for f in FACTOR_NAMES], dtype=float)
+    return np.array([c[f] for f in NUMERIC_FACTORS], dtype=float)
 
 
 def _build_gp(alpha: float | np.ndarray = 1e-6) -> GaussianProcessRegressor:
-    n_factors = len(FACTOR_NAMES)
+    n_factors = len(NUMERIC_FACTORS)
     kernel = (
         ConstantKernel(1.0, constant_value_bounds=(1e-3, 1e3))
         * Matern(length_scale=np.ones(n_factors), nu=2.5)
@@ -484,7 +446,7 @@ def _gp_propose_batch(
     n_candidates: int,
     xi: float = 0.01,
 ) -> List[Dict[str, float]]:
-    X_raw = aggregated[FACTOR_NAMES].values.astype(float)
+    X_raw = aggregated[NUMERIC_FACTORS].values.astype(float)
     y = aggregated["target_mean"].values.astype(float)
     
     corners = np.array([
@@ -549,8 +511,9 @@ def _gp_propose_batch(
 def _build_baybe_searchspace() -> SearchSpace:
     parameters = [
         NumericalContinuousParameter(name=f, bounds=FACTOR_CONFIG[f])
-        for f in FACTOR_NAMES
+        for f in NUMERIC_FACTORS
     ]
+    parameters.append(CategoricalParameter(name="base_media", values=BASE_MEDIA_OPTIONS))
     return SearchSpace.from_product(parameters)
 
 
@@ -593,10 +556,12 @@ def baybe_propose_batch(history_df: pd.DataFrame, n_candidates: int, xi: float =
     measurements = measurements.rename(columns={"target_mean": BAYBE_TARGET_NAME})
     campaign.add_measurements(measurements)
 
-    rec = campaign.recommend(batch_size=n_candidates)
+    rec = campaign.recommend(batch_size=n_candidates * 2)
     conditions: List[Dict[str, float]] = []
     for _, row in rec.iterrows():
-        c = {f: round(float(row[f]), 4) for f in FACTOR_NAMES}
+        c = {f: round(float(row[f]), 4) for f in NUMERIC_FACTORS}
+        c["base_media"] = str(row["base_media"])
+        c = _enforce_volume_constraint(c)
         if is_valid_condition(c):
             conditions.append(optimized_view(merge_with_constants(c)))
         if len(conditions) >= n_candidates:
@@ -604,7 +569,7 @@ def baybe_propose_batch(history_df: pd.DataFrame, n_candidates: int, xi: float =
 
     if len(conditions) < n_candidates:
         print(f"  [BayBE] {len(conditions)} valid after filtering — filling with LHS.")
-        conditions.extend(latin_hypercube_sample(n_candidates - len(conditions)))
+        conditions.extend(latin_hypercube_sample(n_candidates * 10))
     conditions = unique_conditions(conditions)[:n_candidates]
     print(f"  [BayBE] Recommended {len(conditions)} conditions from {len(aggregated)} training points.")
     return conditions
@@ -734,7 +699,7 @@ def validate_transfers(transfers: List[Dict]) -> None:
 def select_best_unique_conditions(results_df: pd.DataFrame, n: int) -> List[Dict[str, float]]:
     if results_df.empty:
         return []
-    score_col = "score_for_model" if "score_for_model" in results_df.columns else "mu_max_per_hr"
+    score_col = "target_mean" if "target_mean" in results_df.columns else "mu_max_per_hr"
     grouped = (
         results_df
         .groupby(FACTOR_NAMES, dropna=False)[score_col]
@@ -850,380 +815,167 @@ def build_transfer_array_from_design(designs: List[WellDesign]) -> List[Dict]:
 
 
 # ============================================================
-# 12. ANOMALY DETECTION
+# 12. MULTI-PLATE DATA INGESTION
 # ============================================================
 
-def flag_precipitation_anomaly(od: np.ndarray, composition: Optional[Dict[str, float]] = None) -> bool:
-    od = np.asarray(od, dtype=float)
-    valid_od = od[np.isfinite(od)]
-    if len(valid_od) < 2:
-        return False
+import glob
 
-    initial = float(valid_od[0])
-    endpoint = float(valid_od[-1])
-    early_delta = endpoint - initial
-    if len(valid_od) >= 4:
-        early_slope = float(np.nanmean(np.diff(valid_od[:4])))
-    else:
-        early_slope = float(np.nanmean(np.diff(valid_od))) if len(valid_od) > 1 else 0.0
-
-    chem_risk = False
-    if composition is not None:
-        full = merge_with_constants(composition)
-        chem_risk = (
-            full.get("pH", BASE_PH) > 8.0 and full.get("Phosphate_mM", 0.0) > 5.0
-        ) or (
-            full.get("Phosphate_mM", 0.0) > 6.0 and full.get("MgSO4_mM", 0.0) > 1.5
-        )
-
-    high_initial = initial > PRECIPITATION_OD_THRESHOLD
-    flat_curve = early_delta < PRECIPITATION_STABLE_DELTA_THRESHOLD
-    weak_early_growth = early_slope < PRECIPITATION_EARLY_SLOPE_THRESHOLD
-
-    return bool(high_initial and (flat_curve or weak_early_growth or chem_risk))
-
-
-# ============================================================
-# 13. INPUT / OUTPUT
-# ============================================================
-
-def save_plate_design(designs: List[WellDesign], out_csv: Path) -> None:
-    rows = []
-    for d in designs:
-        row = {
-            "well": d.well,
-            "condition_type": d.condition_type,
-            "source_note": d.source_note,
-        }
-        row.update(merge_with_constants(d.composition))
-        rows.append(row)
-    pd.DataFrame(rows).to_csv(out_csv, index=False)
-
-
-def save_transfer_array(transfers: List[Dict], out_json: Path) -> None:
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(transfers, f, indent=2)
-
-
-def load_history_results(results_csv: Path) -> pd.DataFrame:
-    columns = ALL_FACTOR_NAMES + [
-        "iteration", "well", "condition_type",
-        "mu_max_per_hr", "doubling_time_hr", "auc", "endpoint_od",
-        "precipitation_flag", "score_for_model",
-    ]
-    NUMERIC_COLS = [
-        "mu_max_per_hr", "doubling_time_hr", "auc", "endpoint_od",
-        "score_for_model", "iteration",
-    ] + ALL_FACTOR_NAMES
-    if not results_csv.exists():
-        df = pd.DataFrame(columns=columns)
-        for col in NUMERIC_COLS:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
-        return df
-    df = pd.read_csv(results_csv)
-    for col in NUMERIC_COLS:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-    for factor, value in CONSTANTS.items():
-        if factor not in df.columns:
-            # We ONLY want to fill this for strictly brand new data (where no one has run history yet),
-            # but setting this silently hides data divergence. Leaving as is, but noting the user's warning.
-            # A safer approach is to leave it NaN if missing, or explicitly check if it's the first run
-            df[factor] = value
-    if "score_for_model" not in df.columns:
-        df["score_for_model"] = df.apply(
-            lambda r: compute_composite_score(r.get("mu_max_per_hr", np.nan), r.get("endpoint_od", np.nan), r.get("auc", np.nan), bool(r.get("precipitation_flag", False))),
-            axis=1,
-        )
+def load_historical_plate_data(data_dir: str = "data") -> pd.DataFrame:
+    all_rows = []
+    plate_reps = glob.glob(f"{data_dir}/*_replicates.csv")
+    for rep_file in plate_reps:
+        prefix = rep_file.replace("_replicates.csv", "")
+        growth_file = f"{prefix}_growth.csv"
+        map_file = f"{prefix}_plate_condition_map.csv"
+        
+        if not (Path(growth_file).exists() and Path(map_file).exists()):
+            continue
+            
+        reps_df = pd.read_csv(rep_file)
+        growth_df = pd.read_csv(growth_file)
+        map_df = pd.read_csv(map_file)
+        
+        merged1 = reps_df.merge(growth_df[["condition_id", "well"]].drop_duplicates(), on="condition_id", how="inner")
+        merged2 = merged1.merge(map_df, on="well", how="inner")
+        
+        for _, row in merged2.iterrows():
+            c = {
+                "base_media": row["base_media"],
+                "target_mean": float(row["mean_growth_rate_per_hr"]),
+                "replicate_count": float(row.get("n_replicates", 1.0)),
+            }
+            if "variance_growth_rate_per_hr" in row and pd.notna(row["variance_growth_rate_per_hr"]):
+                c["target_std"] = max(0.01, float(row["variance_growth_rate_per_hr"])**0.5)
+            else:
+                c["target_std"] = 0.05
+                
+            for f in NUMERIC_FACTORS:
+                c[f] = float(row.get(f, 0.0))
+            
+            c["condition_type"] = "historical"
+            all_rows.append(c)
+            
+    df = pd.DataFrame(all_rows)
+    if not df.empty:
+        agg_cols = {"target_mean": "mean", "replicate_count": "sum", "target_std": "mean"}
+        df = df.groupby(FACTOR_NAMES, dropna=False).agg(agg_cols).reset_index()
+        # Drop entries where growth might be 0 or broken if we wanted, but we trust the input
     return df
 
-
-def save_model_diagnostics(model: Optional[object], aggregated_df: pd.DataFrame, out_json: Path) -> None:
-    payload = {
-        "n_training_points": int(len(aggregated_df)),
-        "optimizer": "BayBE" if USE_BAYBE else "GP_fallback",
-        "optimized_factor_names": FACTOR_NAMES,
-        "constant_factors": CONSTANTS,
-        "all_factor_names": ALL_FACTOR_NAMES,
-        "top_training_points": aggregated_df.head(10).to_dict(orient="records") if not aggregated_df.empty else [],
-    }
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2)
-
-
-# ============================================================
-# 14. OD SIMULATION
-# ============================================================
-
-# Simulation parameters mapped to quadratic coefficients or offsets
-SIMULATION_CONFIG = {
-    "center_Yeast_gL": 10.0,
-    "coef_Yeast_gL": 0.020000,
-    "center_Tryptone_gL": 10.0,
-    "coef_Tryptone_gL": 0.015000,
-    "center_NaCl_mM": 220.0,
-    "coef_NaCl_mM": 0.000012,
-    "center_MOPS_mM": 70.0,
-    "coef_MOPS_mM": 0.000010,
-    "center_Phosphate_mM": 5.5,
-    "coef_Phosphate_mM": 0.030000,
-    "center_MgSO4_mM": 1.1,
-    "coef_MgSO4_mM": 0.030000,
-    "center_NH4SO4_mM": 11.0,
-    "coef_NH4SO4_mM": 0.001800,
-    "center_Glycerol_pct": 0.28,
-    "coef_Glycerol_pct": 1.200000,
-    "center_pH": 8.0,
-    "coef_pH": 1.200000,
-    "interaction_coef": -0.00002,
-}
-
-def _well_position_effect(well: str) -> float:
-    row = ord(well[0]) - ord("A")
-    col = int(well[1:])
-    center_row = 3.5
-    center_col = 6.5
-    radial = ((row - center_row) ** 2 + (col - center_col) ** 2) ** 0.5
-    return 0.003 * radial
-
-
-def simulate_od_curves(designs: List[WellDesign], duration_min: int = 120, interval_min: int = 10) -> pd.DataFrame:
-    times = np.arange(0, duration_min + interval_min, interval_min)
-    data = {"time_min": times}
-
-    for d in designs:
-        if d.condition_type == "blank":
-            baseline = 0.03 + rng.normal(0, 0.002)
-            noise = rng.normal(0, 0.002, size=len(times))
-            data[d.well] = np.clip(baseline + noise, 0, None)
-            continue
-
-        c = merge_with_constants(d.composition)
-        growth_strength = (
-            0.70
-            - SIMULATION_CONFIG["coef_Yeast_gL"] * (c.get("Yeast_gL", 10.0) - SIMULATION_CONFIG["center_Yeast_gL"]) ** 2
-            - SIMULATION_CONFIG["coef_Tryptone_gL"] * (c.get("Tryptone_gL", 10.0) - SIMULATION_CONFIG["center_Tryptone_gL"]) ** 2
-            - SIMULATION_CONFIG["coef_NaCl_mM"] * (c["NaCl_mM"] - SIMULATION_CONFIG["center_NaCl_mM"]) ** 2
-            - SIMULATION_CONFIG["coef_MOPS_mM"] * (c["MOPS_mM"] - SIMULATION_CONFIG["center_MOPS_mM"]) ** 2
-            - SIMULATION_CONFIG["coef_Phosphate_mM"] * (c["Phosphate_mM"] - SIMULATION_CONFIG["center_Phosphate_mM"]) ** 2
-            - SIMULATION_CONFIG["coef_MgSO4_mM"] * (c["MgSO4_mM"] - SIMULATION_CONFIG["center_MgSO4_mM"]) ** 2
-            - SIMULATION_CONFIG["coef_NH4SO4_mM"] * (c["NH4SO4_mM"] - SIMULATION_CONFIG["center_NH4SO4_mM"]) ** 2
-            - SIMULATION_CONFIG["coef_Glycerol_pct"] * (c["Glycerol_pct"] - SIMULATION_CONFIG["center_Glycerol_pct"]) ** 2
-            - SIMULATION_CONFIG["coef_pH"] * (c.get("pH", BASE_PH) - SIMULATION_CONFIG["center_pH"]) ** 2
-        )
-        interaction = SIMULATION_CONFIG["interaction_coef"] * (c["NaCl_mM"] - SIMULATION_CONFIG["center_NaCl_mM"]) * (c["NH4SO4_mM"] - SIMULATION_CONFIG["center_NH4SO4_mM"])
-        growth_strength = max(0.03, growth_strength + interaction)
-        baseline = 0.05 + rng.uniform(0.0, 0.01) + _well_position_effect(d.well)
-
-        precip_risk = (
-            c.get("pH", BASE_PH) > 8.0 and c.get("Phosphate_mM", 0.0) > 6.0
-        ) or (
-            c.get("Phosphate_mM", 0.0) > 8.0 and c.get("MgSO4_mM", 0.0) > 1.5
-        )
-
-        curve = []
-        failed_well = rng.random() < 0.03
-        for t in times:
-            t_hr = t / 60.0
-            if failed_well:
-                val = baseline + rng.normal(0, 0.006)
-            else:
-                val = baseline + growth_strength * (1 - np.exp(-1.8 * t_hr))
-                val += rng.normal(0, 0.01 + 0.005 * t_hr)
-            curve.append(max(0.0, val))
-
-        if precip_risk:
-            curve = [curve[0] + 0.32] + [x + 0.24 + rng.normal(0, 0.01) for x in curve[1:]]
-
-        data[d.well] = curve
-
-    return pd.DataFrame(data)
-
-
-def evaluate_plate_from_od(designs: List[WellDesign], od_df: pd.DataFrame, iteration: int) -> pd.DataFrame:
-    if "time_min" not in od_df.columns:
-        raise ValueError("OD dataframe must contain a 'time_min' column.")
-
-    time_hr = od_df["time_min"].values / 60.0
-    rows = []
-
-    for d in designs:
-        if d.well not in od_df.columns:
-            raise ValueError(f"Missing OD column for well {d.well} in OD dataframe.")
-
-        od = od_df[d.well].values.astype(float)
-        precip = flag_precipitation_anomaly(od, d.composition)
-        metrics = compute_well_metrics(time_hr, od)
-        score_for_model = compute_composite_score(
-            metrics["mu_max_per_hr"],
-            metrics["endpoint_od"],
-            metrics["auc"],
-            precip,
-        ) if USE_COMPOSITE_TARGET else metrics["mu_max_per_hr"]
-
-        rows.append({
-            "iteration": iteration,
-            "well": d.well,
-            "condition_type": d.condition_type,
-            **merge_with_constants(d.composition),
-            **metrics,
-            "precipitation_flag": precip,
-            "score_for_model": score_for_model,
-            "od_readings": json.dumps([round(float(x), 5) for x in od]),
-        })
-
-    return pd.DataFrame(rows)
-
-
-# ============================================================
-# 15. MODEL FITTING
-# ============================================================
-
 def aggregate_history_for_model(history_df: pd.DataFrame) -> pd.DataFrame:
-    valid_types = [
-        "lhs", "media_panel", "ph_grad", "nacl_grad", "carbon_grad",
-        "candidate", "repeat_best", "center", "baseline",
-    ]
-    usable = history_df[history_df["condition_type"].isin(valid_types)].copy()
-
-    if "precipitation_flag" in usable.columns:
-        usable = usable[~usable["precipitation_flag"].astype(bool)]
-
-    target_col = "score_for_model" if USE_COMPOSITE_TARGET and "score_for_model" in usable.columns else "mu_max_per_hr"
-    usable[target_col] = pd.to_numeric(usable[target_col], errors="coerce")
-    usable["mu_max_per_hr"] = pd.to_numeric(usable["mu_max_per_hr"], errors="coerce")
-    usable["endpoint_od"] = pd.to_numeric(usable["endpoint_od"], errors="coerce")
-    usable["auc"] = pd.to_numeric(usable["auc"], errors="coerce")
-
-    # Drop wells that likely reflect oxygen limitation / non-linear regime
-    if "endpoint_od" in usable.columns:
-        usable = usable[np.isfinite(usable["endpoint_od"])]
-        usable = usable[usable["endpoint_od"] <= ENDPOINT_OD_MAX_FOR_MODEL]
-
-    usable = usable[np.isfinite(usable[target_col])].copy()
-    if usable.empty:
-        return usable
-
-    agg_spec = {
-        target_col: ["mean", "median", "std", "count"],
-        "mu_max_per_hr": "mean",
-        "endpoint_od": "mean",
-        "auc": "mean",
-    }
-    aggregated = usable.groupby(FACTOR_NAMES, dropna=False).agg(agg_spec)
-    aggregated.columns = ["_".join(col).strip("_") for col in aggregated.columns.to_flat_index()]
-    aggregated = aggregated.reset_index()
-    aggregated.rename(columns={
-        f"{target_col}_mean": "target_mean",
-        f"{target_col}_median": "target_median",
-        f"{target_col}_std": "target_std",
-        f"{target_col}_count": "replicate_count",
-        "mu_max_per_hr_mean": "mu_max_mean",
-        "endpoint_od_mean": "endpoint_od_mean",
-        "auc_mean": "auc_mean",
-    }, inplace=True)
-    aggregated["target_std"] = aggregated["target_std"].fillna(0.0)
-    aggregated = aggregated.sort_values("target_mean", ascending=False).reset_index(drop=True)
-    return aggregated
-
-
-def summarize_best_conditions(history_df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
-    usable = history_df[history_df["condition_type"] != "blank"].copy()
-    if "precipitation_flag" in usable.columns:
-        usable = usable[~usable["precipitation_flag"].astype(bool)]
-    score_col = "score_for_model" if USE_COMPOSITE_TARGET and "score_for_model" in usable.columns else "mu_max_per_hr"
-    usable[score_col] = pd.to_numeric(usable[score_col], errors="coerce")
-    usable = usable[np.isfinite(usable[score_col])]
-    return usable.sort_values(score_col, ascending=False).head(n)
-
+    # History DF is already aggregated by load_historical_plate_data
+    return history_df
 
 # ============================================================
-# 16. MAIN LOOP
+# 13. PREDICTIONS & OUTPUT
 # ============================================================
 
-def run_closed_loop(n_iterations: int = 2, output_dir: str = "bo_outputs") -> None:
+def predict_growth_rates(aggregated_df: pd.DataFrame, conditions: List[Dict[str, float]]) -> List[float]:
+    X_hist_raw = aggregated_df[NUMERIC_FACTORS].values.astype(float)
+    y_hist = aggregated_df["target_mean"].values.astype(float)
+    
+    corners = np.array([
+        [lo for lo, _ in FACTOR_CONFIG.values()],
+        [hi for _, hi in FACTOR_CONFIG.values()],
+    ])
+    scaler = StandardScaler()
+    scaler.fit(corners)
+    
+    X_hist_scaled = scaler.transform(X_hist_raw)
+    replicate_count = aggregated_df["replicate_count"].astype(float).clip(lower=1.0).to_numpy()
+    target_std = aggregated_df["target_std"].astype(float).fillna(0.05).clip(lower=0.02).to_numpy()
+    per_point_alpha = np.maximum((target_std ** 2) / replicate_count, 1e-6)
+    
+    model = _build_gp(alpha=per_point_alpha)
+    model.fit(X_hist_scaled, y_hist)
+    
+    X_pool_raw = np.vstack([condition_to_vector(c) for c in conditions])
+    X_pool_scaled = scaler.transform(X_pool_raw)
+    mu_pred, _ = model.predict(X_pool_scaled, return_std=True)
+    return [float(m) for m in mu_pred]
+
+def save_next_round_plate_map(designs: List[WellDesign], predicted_rates: List[float], out_csv: Path) -> None:
+    rows = []
+    for d, pred_rate in zip(designs, predicted_rates):
+        c = d.composition.copy()
+        num_sum = sum(c.get(f, 0.0) for f in NUMERIC_FACTORS)
+        water_vol = max(0.0, MAX_REAGENT_VOLUME_UL - num_sum)
+        
+        row = {
+            "well": d.well,
+            "condition": f"BO_Round_{d.condition_type}",
+            "base_media": c["base_media"]
+        }
+        for f in NUMERIC_FACTORS:
+            row[f] = round(c.get(f, 0.0), 1)
+        row["water"] = round(water_vol, 1)
+        row["cells"] = round(CELL_VOLUME_UL, 1)
+        row["total"] = round(num_sum + water_vol + CELL_VOLUME_UL, 1)
+        row["predicted_growth_rate_per_hr"] = round(pred_rate, 4)
+        
+        rows.append(row)
+        
+    pd.DataFrame(rows).to_csv(out_csv, index=False)
+
+# ============================================================
+# 14. MAIN LOOP
+# ============================================================
+
+def run_closed_loop(output_dir: str = "bo_outputs") -> None:
     outdir = Path(output_dir)
     outdir.mkdir(parents=True, exist_ok=True)
 
-    history_path = outdir / "all_results.csv"
-    history_df = load_history_results(history_path)
-
     print("=" * 72)
-    print("Monomer Bio Hackathon — Closed-Loop Bayesian Optimization Agent (phase-2 focused)")
+    print("Closed-Loop Bayesian Optimization Agent (Multi-Plate Input Edition)")
     print("Optimizer       : BayBE" if USE_BAYBE else "Optimizer       : GP (BayBE not installed)")
-    print(f"Optimized vars  : {FACTOR_NAMES}")
-    print(f"Constants       : {CONSTANTS}")
-    print(f"pH range        : {CONSTANTS.get('pH', BASE_PH)} (Fixed)   base_pH = {BASE_PH}")
-    print(f"Simulation mode : {SIMULATION_MODE}")
-    print(f"Composite target: {USE_COMPOSITE_TARGET}")
+    print(f"Target variable : mean_growth_rate_per_hr")
+    print(f"Categorical var : base_media")
+    print(f"Numerical vars  : {NUMERIC_FACTORS}")
     print("=" * 72)
 
-    for iteration in range(1, n_iterations + 1):
-        well_budget = ROUND_WELL_BUDGET.get(iteration, DEFAULT_WELL_BUDGET)
-        print(f"\n{'=' * 72}")
-        print(f"Iteration {iteration} / {n_iterations}  (well budget: {well_budget})")
-        print(f"{'=' * 72}")
+    print("Loading historical data...")
+    history_df = load_historical_plate_data("data")
+    if history_df.empty:
+        print("No historical data found! Providing LHS initial design.")
+    else:
+        print(f"Loaded {len(history_df)} unique historical conditions from plates.")
+        
+    print("Generating 20 BO proposals...")
+    n_proposals = 20
+    designs: List[WellDesign] = []
+    
+    if history_df.empty:
+        # Fallback to pure random LHS if no history
+        bo_conditions = latin_hypercube_sample(n_proposals)
+        source = "lhs_fallback"
+    else:
+        # Request 20 candidates from BayBE/GP
+        bo_conditions = baybe_propose_batch(history_df, n_proposals, xi=0.01)
+        source = "baybe" if USE_BAYBE else "gp_fallback"
+        
+    for i, c in enumerate(bo_conditions):
+        well_id = f"P{i+1}" # arbitrary well IDs for proposals
+        designs.append(WellDesign(well=well_id, condition_type="candidate", composition=c, source_note=source))
 
-        aggregated = aggregate_history_for_model(history_df)
+    if not history_df.empty:
+        predicted_rates = predict_growth_rates(history_df, [d.composition for d in designs])
+    else:
+        predicted_rates = [0.0 for _ in designs]
+        
+    # Sort designs and predicted_rates by predicted_rates descending
+    sorted_pairs = sorted(zip(designs, predicted_rates), key=lambda x: x[1], reverse=True)
+    designs = [pair[0] for pair in sorted_pairs]
+    predicted_rates = [pair[1] for pair in sorted_pairs]
+    
+    # re-assign ranks to 'well' or condition name
+    for i, d in enumerate(designs):
+        d.well = f"Rank_{i+1}"
 
-        designs = build_plate_design(
-            iteration=iteration,
-            total_iterations=n_iterations,
-            history_df=history_df,
-        )
+    out_csv = outdir / "next_round_plate_condition_map.csv"
+    save_next_round_plate_map(designs, predicted_rates, out_csv)
 
-        transfers = build_transfer_array_from_design(designs)
-
-        design_csv = outdir / f"plate_design_iter{iteration}.csv"
-        transfer_json = outdir / f"transfer_array_iter{iteration}.json"
-        audit_json = outdir / f"model_audit_iter{iteration}.json"
-        save_plate_design(designs, design_csv)
-        save_transfer_array(transfers, transfer_json)
-        save_model_diagnostics(None, aggregated, audit_json)
-
-        print(f"Saved design:    {design_csv}  ({len(designs)} wells)")
-        print(f"Saved transfers: {transfer_json}  ({len(transfers)} transfers)")
-        print(f"Saved audit:     {audit_json}")
-
-        if SIMULATION_MODE:
-            od_df = simulate_od_curves(designs)
-        else:
-            raise NotImplementedError("Replace this block with live Monomer / Elnora OD fetch.")
-
-        od_csv = outdir / f"od_iter{iteration}.csv"
-        od_df.to_csv(od_csv, index=False)
-        print(f"Saved OD data:   {od_csv}")
-
-        iter_results = evaluate_plate_from_od(designs, od_df, iteration)
-        iter_csv = outdir / f"results_iter{iteration}.csv"
-        iter_results.to_csv(iter_csv, index=False)
-        print(f"Saved results:   {iter_csv}")
-
-        history_df = pd.concat([history_df, iter_results], ignore_index=True)
-        history_df.to_csv(history_path, index=False)
-
-        best_df = summarize_best_conditions(history_df, n=1)
-        if not best_df.empty:
-            row = best_df.iloc[0]
-            score_label = "score_for_model" if USE_COMPOSITE_TARGET else "mu_max_per_hr"
-            print("\nBest condition so far:")
-            print(f"  iteration      : {int(row['iteration'])}")
-            print(f"  well           : {row['well']}")
-            print(f"  condition_type : {row['condition_type']}")
-            print(f"  {score_label:<15}: {row[score_label]:.4f}")
-            print(f"  mu_max_per_hr  : {row['mu_max_per_hr']:.4f}")
-            print(f"  doubling_time  : {row['doubling_time_hr']:.4f} hr")
-            print("  composition    :")
-            for f in FACTOR_NAMES:
-                unit = "mM" if "mM" in f else ("%" if "pct" in f else "")
-                print(f"    {f:<18}: {row[f]:.4f} {unit}")
-
-    print(f"\n{'=' * 72}")
-    print("Experiment complete.")
-    print(f"Full history saved to: {history_path}")
+    print(f"\nSaved next round plate map with predictions: {out_csv}")
     print(f"{'=' * 72}")
-
 
 if __name__ == "__main__":
     run_closed_loop()

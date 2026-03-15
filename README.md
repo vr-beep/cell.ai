@@ -71,3 +71,19 @@ The loop runs autonomously for 2-3 rounds in 10 hours of robot time.
 ## Status
 
 **Reviewed — Mar 12, 2026.** PRD complete. Pre-hack evals (E1 interface contracts, E3 MCP mock) scheduled for Mar 12-13. Hackathon starts Mar 14.
+
+## Running the Optimization
+
+To run the adapted agent and generate the next round's plate map using Bayesian Optimization over historical plate data:
+
+1. Ensure your historical data is in the `data/` directory. For each plate, the script expects:
+   - `[plate_name]_replicates.csv` (contains `mean_growth_rate_per_hr`)
+   - `[plate_name]_growth.csv` (contains condition to well mappings)
+   - `[plate_name]_plate_condition_map.csv` (contains categorical `base_media` and all numeric volume components)
+2. Run the script from the root project directory:
+   ```bash
+   python agent.py
+   ```
+3. The script will output the proposed next round conditions to:
+   `bo_outputs/next_round_plate_condition_map.csv`
+   This CSV will contain the exact proposed volumes for `yeast_extract`, `tryptone`, `mops`, `na_l_glut`, `kh2po4`, `glucose`, the dynamically calculated `water`, 20uL `cells`, and the `predicted_growth_rate_per_hr` for each well layout.
