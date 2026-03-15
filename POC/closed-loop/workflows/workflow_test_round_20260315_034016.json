@@ -1,0 +1,18 @@
+{
+  "transfer_array": [
+    {
+      "src_plate": "reagent",
+      "src_well": "D2",
+      "dst_plate": "experiment",
+      "dst_well": "B2",
+      "volume": 110
+    }
+  ],
+  "monitoring_wells": [
+    "B2"
+  ],
+  "plate_barcode": "SIM_TEST_PLATE",
+  "round_label": "test_round",
+  "reagent_name": "CellAI Reagent Plate",
+  "cell_culture_stock_plate_barcode": "CellAI Cell Stock"
+}
