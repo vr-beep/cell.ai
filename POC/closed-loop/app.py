@@ -67,7 +67,13 @@ def load_growth(plate_id: str) -> pd.DataFrame | None:
     path = DATA_DIR / f"{plate_id}_growth.csv"
     if not path.exists():
         return None
-    return pd.read_csv(path)
+    df = pd.read_csv(path)
+    # Normalize column names across different round schemas
+    if "condition_id" in df.columns and "condition" not in df.columns:
+        df = df.rename(columns={"condition_id": "condition"})
+    if "max_absorbance_OD600" in df.columns and "K_asymptote" not in df.columns:
+        df = df.rename(columns={"max_absorbance_OD600": "K_asymptote"})
+    return df
 
 
 @st.cache_data(ttl=10)
