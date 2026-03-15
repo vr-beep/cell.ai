@@ -1,0 +1,5 @@
+plate_id,plate_barcode,reagent_name,n_replicates,mean_growth_rate_per_hr,median_growth_rate_per_hr,variance_growth_rate_per_hr,mean_max_absorbance_OD600,mean_max_cell_concentration_cells_per_mL
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,Glucose,3,0.25514,0.265344,0.000984161,0.132967,132966666
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,High Buffer Defined,3,0.48499,0.484065,0.001343168,0.18,180000000
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,MOPS (pH 7),3,0.428716,0.413884,0.000688776,0.1903,190300000
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,Novel Bio Cyclone,1,0.371168,0.371168,,0.1461,146100000
