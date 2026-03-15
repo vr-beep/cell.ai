@@ -18,6 +18,9 @@ Examples:
     python scripts/monitor_data_processing.py PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ
     # Plate 3: PLT1RQR2P5DESEEHSKOIUQCNAXH3RA
     python scripts/monitor_data_processing.py PLT1RQR2P5DESEEHSKOIUQCNAXH3RA
+    # Plate 4: PLT1RQR2P5DESEEHSKOIUQCNAXH3RA
+    python scripts/monitor_data_processing.py PLT1RQR2P5DESEEHSKOIUQCNAXH3RA \
+    --plate-map data/PLT1RQR2P5DESEEHSKOIUQCNAXH3RA_round4_plate_condition_map.csv
 """
 
 import argparse
@@ -251,16 +254,24 @@ def melt_wide_csv(csv_text: str) -> list[dict]:
     return rows
 
 
-def build_rows(raw: dict, data_dir: Path) -> list[dict]:
-    """Join observation rows with the culture map and normalise to COLUMNS."""
+def build_rows(raw: dict, data_dir: Path,
+               plate_map_path: Path | None = None) -> list[dict]:
+    """Join observation rows with the culture map and normalise to COLUMNS.
+
+    If plate_map_path is given it is used instead of the default
+    <data_dir>/<plate_id>_plate_condition_map.csv.  When a map is loaded,
+    only wells listed in that map are included in the output — this allows a
+    single physical plate to host multiple experiments by pointing at
+    different condition maps.
+    """
     plate_id = raw["plate_id"]
     plate_barcode = raw["plate_barcode"]
 
     # Load plate map
-    plate_map_path = data_dir / f"{plate_id}_plate_condition_map.csv"
+    resolved_map = plate_map_path or (data_dir / f"{plate_id}_plate_condition_map.csv")
     well_to_condition = {}
-    if plate_map_path.exists():
-        with open(plate_map_path, "r", newline="") as f:
+    if resolved_map.exists():
+        with open(resolved_map, "r", newline="") as f:
             reader = csv.DictReader(f)
             signature_to_id = {}
             condition_counters = {}
@@ -272,29 +283,43 @@ def build_rows(raw: dict, data_dir: Path) -> list[dict]:
                     signature_to_id[sig] = f"{cond_base}_{condition_counters[cond_base]}"
                 well_to_condition[row["well"]] = signature_to_id[sig]
     else:
-        print(f"Warning: Plate map not found at {plate_map_path}", file=sys.stderr)
+        print(f"Warning: Plate map not found at {resolved_map}", file=sys.stderr)
 
-    # Build culture map keyed by well
+    # Build culture map keyed by well; pre-join reagent names/volumes so that
+    # each (well, timepoint) produces exactly one output row.
     culture_map: dict[str, dict] = {}
+    well_reagent_name: dict[str, str | None] = {}
+    well_reagent_vol: dict[str, str | None] = {}
     for c in raw.get("cultures", []):
-        culture_map[c["well"]] = c
+        well = c["well"]
+        culture_map[well] = c
+        reagents = c.get("reagents") or []
+        if reagents:
+            well_reagent_name[well] = ", ".join(r.get("name", "") for r in reagents)
+            well_reagent_vol[well] = ", ".join(
+                str(_num(r.get("volume"))) if _num(r.get("volume")) is not None else ""
+                for r in reagents
+            )
+        else:
+            well_reagent_name[well] = None
+            well_reagent_vol[well] = None
 
-    # Melt all observation CSV pages from wide to long format
+    # Melt all observation CSV pages from wide to long format, then filter to
+    # mapped wells so that other experiments on the same plate are excluded.
     obs_rows: list[dict] = []
     for csv_text in raw.get("observation_csvs", []):
         obs_rows.extend(melt_wide_csv(csv_text))
+    if well_to_condition:
+        obs_rows = [r for r in obs_rows if r["well"] in well_to_condition]
 
     rows: list[dict] = []
     for obs in obs_rows:
         well = obs["well"]
         culture = culture_map.get(well, {})
-        reagents = culture.get("reagents") or []
-        condition_id = well_to_condition.get(well)
-
-        base = {
+        rows.append({
             "culture_id": culture.get("id"),
             "well": well,
-            "condition_id": condition_id,
+            "condition_id": well_to_condition.get(well),
             "plate_id": plate_id,
             "plate_barcode": plate_barcode,
             "status": culture.get("status"),
@@ -302,17 +327,9 @@ def build_rows(raw: dict, data_dir: Path) -> list[dict]:
             "observation_timestamp": obs["observation_timestamp"],
             "absorbance_OD600": obs["absorbance_OD600"],
             "cell_concentration_cells_per_mL": obs["cell_concentration_cells_per_mL"],
-        }
-
-        if reagents:
-            for r in reagents:
-                rows.append({
-                    **base,
-                    "reagent_name": r.get("name"),
-                    "reagent_volume_uL": _num(r.get("volume")),
-                })
-        else:
-            rows.append({**base, "reagent_name": None, "reagent_volume_uL": None})
+            "reagent_name": well_reagent_name.get(well),
+            "reagent_volume_uL": well_reagent_vol.get(well),
+        })
 
     rows.sort(key=lambda r: (r["observation_timestamp"] or "", r["well"] or ""))
     return [{col: r.get(col) for col in COLUMNS} for r in rows]
@@ -541,13 +558,31 @@ def main() -> None:
     )
     parser.add_argument(
         "-r", "--replicates-output", default=None,
-        help="Replicate summary CSV path (default: <output_dir>/<first_plate_id>_replicates.csv)",
+        help="Replicate summary CSV path (default: <output_dir>/<stem>_replicates.csv)",
+    )
+    parser.add_argument(
+        "--plate-map", default=None,
+        help=(
+            "Path to a condition map CSV to use instead of the default "
+            "<plate_id>_plate_condition_map.csv.  Only wells listed in this "
+            "map will be included in the output — use this when the plate "
+            "hosts multiple experiments (e.g. --plate-map data/"
+            "PLT1RQR2P5DESEEHSKOIUQCNAXH3RA_round4_plate_condition_map.csv). "
+            "Output filenames are derived from the map filename stem."
+        ),
     )
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    stem = args.plate_ids[0]
+
+    plate_map_path = Path(args.plate_map) if args.plate_map else None
+    # When a custom map is given, derive the output stem from its filename so
+    # outputs are named after the experiment, not the plate barcode.
+    if plate_map_path:
+        stem = plate_map_path.name.replace("_plate_condition_map.csv", "")
+    else:
+        stem = args.plate_ids[0]
 
     raw_path = args.output or str(output_dir / f"{stem}.csv")
     growth_path = args.growth_output or str(output_dir / f"{stem}_growth.csv")
@@ -557,7 +592,7 @@ def main() -> None:
     for plate_id in args.plate_ids:
         print(f"Fetching {plate_id}...", file=sys.stderr)
         raw = fetch_raw(plate_id)
-        rows = build_rows(raw, data_dir=output_dir)
+        rows = build_rows(raw, data_dir=output_dir, plate_map_path=plate_map_path)
         print(f"  {len(rows)} observation row(s)", file=sys.stderr)
         all_rows.extend(rows)
 
