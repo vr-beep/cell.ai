@@ -49,13 +49,20 @@ REAGENT_COLS = [
     # Round 2 additions (mechanistic hypothesis conditions)
     "mgso4", "trace_metals", "glycerol", "feso4", "nacit",
 ]
-# ALL_VOL_COLS: all parameters optimized by BayBE (cells is now included)
+# Reagents that were explicitly varied in the Round 1 DOE plate
+# (PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ). Only these are treated as search parameters;
+# all other reagent columns are fixed at 0.
+VARIED_REAGENTS = ["yeast_extract", "tryptone", "mops", "na_l_glut", "kh2po4", "glucose"]
+
+# Cells volume is fixed — not a search parameter.
+FIXED_CELLS_UL = 20
+
+# ALL_VOL_COLS: columns used when joining condition maps to growth data
 ALL_VOL_COLS = ["base_media_vol"] + REAGENT_COLS + ["cells"]
 
 # Volume bounds (µL) — must cover the full range present in historical data
 BASE_MEDIA_VOL_BOUNDS = (100, 190)  # second plate tested up to 190 µL
 REAGENT_VOL_BOUNDS = (0, 40)        # per-reagent cap; historical max was ~26 µL
-CELL_VOL_BOUNDS = (10, 100)         # second plate tested 10–100 µL inoculum
 MAX_REAGENT_SUM_UL = 60             # total additive volume across active reagents
 MIN_WATER_UL = 10                   # minimum water to reserve for dilution
 
@@ -78,12 +85,15 @@ BASE_MEDIA_OPTIONS = [
     "Defined Glycerol Media",
 ]
 
+# Media excluded from BayBE campaigns regardless of performance ranking.
+# LBv2 is excluded: insufficient replicates and not a target for future rounds.
+EXCLUDED_MEDIA: set[str] = {"Prepared LBv2 Media"}
+
 TARGET_COL = "mean_growth_rate_per_hr"
 RANDOM_SEED = 42
 
 # Campaign design
 N_TOP_MEDIA = 2       # how many base media to run campaigns for
-N_ACTIVE_REAGENTS = 3  # reagents to vary per campaign (others fixed at 0)
 
 
 # ── Data loading ───────────────────────────────────────────────────────────────
@@ -191,10 +201,17 @@ class GrowthRatePredictor:
 
 # ── Media and reagent selection ────────────────────────────────────────────────
 
-def select_top_media(history: pd.DataFrame, n: int = N_TOP_MEDIA) -> list[str]:
-    """Return the top N base media ranked by mean growth rate in history."""
+def select_top_media(
+    history: pd.DataFrame,
+    n: int = N_TOP_MEDIA,
+    exclude: set[str] | None = None,
+) -> list[str]:
+    """Return the top N base media ranked by mean growth rate in history,
+    excluding any media in *exclude* (defaults to EXCLUDED_MEDIA)."""
+    excluded = EXCLUDED_MEDIA if exclude is None else exclude
     return (
-        history.groupby("base_media")[TARGET_COL]
+        history[~history["base_media"].isin(excluded)]
+        .groupby("base_media")[TARGET_COL]
         .mean()
         .sort_values(ascending=False)
         .head(n)
@@ -202,41 +219,17 @@ def select_top_media(history: pd.DataFrame, n: int = N_TOP_MEDIA) -> list[str]:
     )
 
 
-def select_active_reagents(
-    media_history: pd.DataFrame,
-    n: int = N_ACTIVE_REAGENTS,
-) -> list[str]:
-    """
-    Pick the top N reagents to vary for a given media campaign.
-
-    Reagents are ranked by absolute correlation with growth rate across the
-    historical conditions for this media. Reagents with zero variance (never
-    varied in the data) get correlation 0 and are ranked last. Falls back to
-    the first N reagents in REAGENT_COLS when there is insufficient data to
-    compute correlations.
-    """
-    if len(media_history) < 2:
-        return REAGENT_COLS[:n]
-
-    correlations: dict[str, float] = {}
-    for col in REAGENT_COLS:
-        if media_history[col].std() > 1e-6:
-            corr = media_history[col].corr(media_history[TARGET_COL])
-            correlations[col] = abs(corr) if pd.notna(corr) else 0.0
-        else:
-            correlations[col] = 0.0
-
-    return sorted(correlations, key=correlations.get, reverse=True)[:n]
 
 
 # ── BayBE campaign per base media ─────────────────────────────────────────────
 
 def _make_searchspace(active_reagents: list[str]) -> SearchSpace:
     """
-    Build a BayBE SearchSpace for base_media_vol, the active reagents, and cells.
-    Linear budget constraint: sum of optimized volumes ≤ TOTAL_VOL_UL (water fills rest).
+    Build a BayBE SearchSpace for base_media_vol and the active reagents.
+    Cells are fixed at FIXED_CELLS_UL and excluded from the search space.
+    Linear budget constraint: base_media_vol + reagents ≤ TOTAL_VOL_UL - FIXED_CELLS_UL - MIN_WATER_UL.
     """
-    opt_cols = ["base_media_vol"] + active_reagents + ["cells"]
+    opt_cols = ["base_media_vol"] + active_reagents
     parameters = [
         NumericalContinuousParameter("base_media_vol", bounds=BASE_MEDIA_VOL_BOUNDS),
         *[
@@ -245,15 +238,14 @@ def _make_searchspace(active_reagents: list[str]) -> SearchSpace:
             )
             for col in active_reagents
         ],
-        NumericalContinuousParameter("cells", bounds=CELL_VOL_BOUNDS),
     ]
     constraints = [
-        # Overall budget: leave at least MIN_WATER_UL for water
+        # Overall budget: fixed cells + optimized volumes + water = TOTAL_VOL_UL
         ContinuousLinearConstraint(
             parameters=opt_cols,
             operator="<=",
             coefficients=[1.0] * len(opt_cols),
-            rhs=float(TOTAL_VOL_UL - MIN_WATER_UL),
+            rhs=float(TOTAL_VOL_UL - FIXED_CELLS_UL - MIN_WATER_UL),
         ),
         # Reagent cap: keep additive volumes at a biologically reasonable scale
         ContinuousLinearConstraint(
@@ -278,7 +270,7 @@ def _run_media_campaign(
     Inactive reagents are fixed at 0 in the output. Uses BotorchRecommender
     when training data is available, RandomRecommender otherwise.
     """
-    opt_cols = ["base_media_vol"] + active_reagents + ["cells"]
+    opt_cols = ["base_media_vol"] + active_reagents
 
     has_data = not media_history.empty
     recommender = BotorchRecommender() if has_data else RandomRecommender()
@@ -291,7 +283,8 @@ def _run_media_campaign(
 
     if has_data:
         # Pass only the optimized columns so the search space matches
-        measurements = media_history[opt_cols + [TARGET_COL]].copy()
+        hist_cols = [c for c in opt_cols if c in media_history.columns]
+        measurements = media_history[hist_cols + [TARGET_COL]].copy()
         campaign.add_measurements(measurements)
 
     recs = campaign.recommend(batch_size=n).copy()
@@ -301,12 +294,13 @@ def _run_media_campaign(
     for col in opt_cols:
         recs[col] = recs[col].clip(lower=0).round(1)
 
-    # Fix all inactive reagents at 0
+    # Fix all inactive reagents at 0; fix cells at FIXED_CELLS_UL
     for col in REAGENT_COLS:
         if col not in active_reagents:
             recs[col] = 0.0
+    recs["cells"] = float(FIXED_CELLS_UL)
 
-    vol_sum = recs[opt_cols].sum(axis=1)
+    vol_sum = recs[opt_cols].sum(axis=1) + FIXED_CELLS_UL
     recs["water"] = (TOTAL_VOL_UL - vol_sum).clip(lower=0).round(1)
     recs["total"] = TOTAL_VOL_UL
 
@@ -319,15 +313,18 @@ def propose_conditions(
     history: pd.DataFrame,
     n_proposals: int = 20,
     n_media: int = N_TOP_MEDIA,
-    n_reagents: int = N_ACTIVE_REAGENTS,
+    exclude_media: set[str] | None = None,
 ) -> pd.DataFrame:
     """
     Select the top-performing base media, run a focused BayBE campaign for each
-    (varying only its most informative reagents), and return combined proposals.
+    varying only VARIED_REAGENTS, and return combined proposals.
 
     Proposal slots are split evenly across the selected media.
     """
-    media_list = select_top_media(history, n=n_media) if not history.empty else BASE_MEDIA_OPTIONS[:n_media]
+    excluded = EXCLUDED_MEDIA if exclude_media is None else exclude_media
+    media_list = select_top_media(history, n=n_media, exclude=excluded) if not history.empty else [
+        m for m in BASE_MEDIA_OPTIONS if m not in excluded
+    ][:n_media]
 
     n_per_media = max(1, n_proposals // len(media_list))
     # Give any remainder to the top media
@@ -338,11 +335,10 @@ def propose_conditions(
     all_recs: list[pd.DataFrame] = []
     for media, n_alloc in allocations.items():
         media_history = history[history["base_media"] == media].copy()
-        active = select_active_reagents(media_history, n=n_reagents)
         try:
-            recs = _run_media_campaign(media, media_history, active, n_alloc)
+            recs = _run_media_campaign(media, media_history, VARIED_REAGENTS, n_alloc)
             all_recs.append(recs)
-            print(f"    [{media}] {len(media_history)} obs, reagents: {active} → {n_alloc} proposals")
+            print(f"    [{media}] {len(media_history)} obs → {n_alloc} proposals")
         except Exception as exc:
             warnings.warn(f"Campaign failed for {media!r}: {exc}")
 
@@ -426,8 +422,12 @@ def main() -> None:
         help="Number of top-performing base media to run campaigns for",
     )
     parser.add_argument(
-        "--n-reagents", type=int, default=N_ACTIVE_REAGENTS,
-        help="Number of reagents to vary per campaign (others fixed at 0)",
+        "--exclude-media", nargs="*", default=None,
+        help=(
+            "Base media names to exclude from campaign selection. "
+            "Defaults to EXCLUDED_MEDIA constant (currently: Prepared LBv2 Media). "
+            "Pass an empty list (--exclude-media) to disable all exclusions."
+        ),
     )
     args = parser.parse_args()
 
@@ -448,12 +448,13 @@ def main() -> None:
         print("  Warning: fewer than 2 observations — GP predictions will be NaN.")
 
     # 3. Run focused BayBE campaigns for top media
-    print(f"\nRunning BayBE campaigns ({args.n_proposals} proposals, top {args.n_media} media, {args.n_reagents} reagents each) ...")
+    exclude_media = set(args.exclude_media) if args.exclude_media is not None else None
+    print(f"\nRunning BayBE campaigns ({args.n_proposals} proposals, top {args.n_media} media, reagents: {VARIED_REAGENTS}) ...")
     proposals = propose_conditions(
         history,
         n_proposals=args.n_proposals,
         n_media=args.n_media,
-        n_reagents=args.n_reagents,
+        exclude_media=exclude_media,
     )
 
     # 4. Annotate with GP surrogate predictions

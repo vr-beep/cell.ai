@@ -1,0 +1,12 @@
+plate_id,plate_barcode,condition_id,reagent_name,n_replicates,mean_growth_rate_per_hr,median_growth_rate_per_hr,variance_growth_rate_per_hr,mean_max_absorbance_OD600,mean_max_cell_concentration_cells_per_mL
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HB-1_BayBE_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Water, Yeast Extract",1,12.724069,12.724069,,0.9239,923900000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HB-2_BayBE_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Water, Yeast Extract",1,5.662782,5.662782,,0.341,341000000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HB-3_BayBE_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Water, Yeast Extract",1,5.769134,5.769134,,0.2821,282100000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HB-CarbonMix_Elnora_1,"Glucose, Glycerol (10%), High Buffer Defined, Tryptone, Yeast Extract",1,6.101861,6.101861,,0.327,327000000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HB-Opt1_Elnora_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Water, Yeast Extract",1,6.119281,6.119281,,0.3068,306800000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HB-Phos_Elnora_1,"High Buffer Defined, KH2PO4 (monobasic), Tryptone, Water, Yeast Extract",1,24.481727,24.481727,,0.3102,310200000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HB-Rich_Elnora_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Yeast Extract",1,10.225619,10.225619,,0.3415,341500000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,NB-CTL_1,Novel Bio Cyclone,1,3.680885,3.680885,,0.2684,268400000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,SD-1_BayBE_1,"MOPS (pH 7), Semi-Defined, Tryptone, Yeast Extract",1,6.560824,6.560824,,0.4164,416400000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,SD-2_BayBE_1,"MOPS (pH 7), Semi-Defined, Tryptone, Yeast Extract",1,5.943078,5.943078,,0.3951,395100000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,SD-CarbonMix_Elnora_1,"Glucose, Glycerol (10%), Semi-Defined, Tryptone, Yeast Extract",1,3.549781,3.549781,,0.3261,326100000

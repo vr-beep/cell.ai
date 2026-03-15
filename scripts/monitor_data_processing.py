@@ -19,8 +19,8 @@ Examples:
     # Plate 3: PLT1RQR2P5DESEEHSKOIUQCNAXH3RA
     python scripts/monitor_data_processing.py PLT1RQR2P5DESEEHSKOIUQCNAXH3RA
     # Plate 4: PLT1RQR2P5DESEEHSKOIUQCNAXH3RA
-    python scripts/monitor_data_processing.py PLT1RQR2P5DESEEHSKOIUQCNAXH3RA \
-    --plate-map data/PLT1RQR2P5DESEEHSKOIUQCNAXH3RA_round4_plate_condition_map.csv
+    #python scripts/monitor_data_processing.py PLT1RQR2P5DESEEHSKOIUQCNAXH3RA \
+    #--plate-map data/PLT1RQR2P5DESEEHSKOIUQCNAXH3RA_round4_plate_condition_map.csv
 """
 
 import argparse
@@ -254,8 +254,42 @@ def melt_wide_csv(csv_text: str) -> list[dict]:
     return rows
 
 
+def _truncate_after_gap(obs_rows: list[dict], max_gap_hours: float) -> list[dict]:
+    """Drop all observations that fall after the first inter-timepoint gap
+    exceeding *max_gap_hours*.
+
+    Observations are assumed to come at regular intervals during an experiment.
+    A sudden large gap (e.g. plate left in the reader overnight and re-read
+    hours later) produces errant data that distorts S-curve fitting.  This
+    function finds the first gap > max_gap_hours in the sorted timestamp
+    sequence and discards everything from that point onward.
+    """
+    timestamps = sorted({r["observation_timestamp"] for r in obs_rows
+                         if r["observation_timestamp"]})
+    if len(timestamps) < 2:
+        return obs_rows
+
+    cutoff: str | None = None
+    for prev_ts, next_ts in zip(timestamps, timestamps[1:]):
+        gap_hours = (_to_unix(next_ts) - _to_unix(prev_ts)) / 3600.0
+        if gap_hours > max_gap_hours:
+            cutoff = next_ts
+            print(
+                f"  Gap of {gap_hours:.1f} h detected between "
+                f"{prev_ts} and {next_ts}; "
+                f"dropping observations from {next_ts} onward.",
+                file=sys.stderr,
+            )
+            break
+
+    if cutoff is None:
+        return obs_rows
+    return [r for r in obs_rows if r["observation_timestamp"] < cutoff]
+
+
 def build_rows(raw: dict, data_dir: Path,
-               plate_map_path: Path | None = None) -> list[dict]:
+               plate_map_path: Path | None = None,
+               max_gap_hours: float | None = None) -> list[dict]:
     """Join observation rows with the culture map and normalise to COLUMNS.
 
     If plate_map_path is given it is used instead of the default
@@ -263,6 +297,9 @@ def build_rows(raw: dict, data_dir: Path,
     only wells listed in that map are included in the output — this allows a
     single physical plate to host multiple experiments by pointing at
     different condition maps.
+
+    If max_gap_hours is set, any observations that follow the first
+    inter-timepoint gap longer than that threshold are discarded.
     """
     plate_id = raw["plate_id"]
     plate_barcode = raw["plate_barcode"]
@@ -304,11 +341,13 @@ def build_rows(raw: dict, data_dir: Path,
             well_reagent_name[well] = None
             well_reagent_vol[well] = None
 
-    # Melt all observation CSV pages from wide to long format, then filter to
-    # mapped wells so that other experiments on the same plate are excluded.
+    # Melt all observation CSV pages from wide to long format, truncate any
+    # observations after a large time gap, then filter to mapped wells.
     obs_rows: list[dict] = []
     for csv_text in raw.get("observation_csvs", []):
         obs_rows.extend(melt_wide_csv(csv_text))
+    if max_gap_hours is not None:
+        obs_rows = _truncate_after_gap(obs_rows, max_gap_hours)
     if well_to_condition:
         obs_rows = [r for r in obs_rows if r["well"] in well_to_condition]
 
@@ -561,6 +600,15 @@ def main() -> None:
         help="Replicate summary CSV path (default: <output_dir>/<stem>_replicates.csv)",
     )
     parser.add_argument(
+        "--max-gap-hours", type=float, default=1.0,
+        help=(
+            "Drop all observations that follow an inter-timepoint gap larger "
+            "than this many hours (default: 1.0).  Set to 0 to disable. "
+            "Useful when a plate is left in the reader and re-measured hours "
+            "after the experiment ends, producing errant late-time data."
+        ),
+    )
+    parser.add_argument(
         "--plate-map", default=None,
         help=(
             "Path to a condition map CSV to use instead of the default "
@@ -577,6 +625,7 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     plate_map_path = Path(args.plate_map) if args.plate_map else None
+    max_gap_hours = args.max_gap_hours if args.max_gap_hours > 0 else None
     # When a custom map is given, derive the output stem from its filename so
     # outputs are named after the experiment, not the plate barcode.
     if plate_map_path:
@@ -592,7 +641,8 @@ def main() -> None:
     for plate_id in args.plate_ids:
         print(f"Fetching {plate_id}...", file=sys.stderr)
         raw = fetch_raw(plate_id)
-        rows = build_rows(raw, data_dir=output_dir, plate_map_path=plate_map_path)
+        rows = build_rows(raw, data_dir=output_dir, plate_map_path=plate_map_path,
+                          max_gap_hours=max_gap_hours)
         print(f"  {len(rows)} observation row(s)", file=sys.stderr)
         all_rows.extend(rows)
 
