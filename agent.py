@@ -61,8 +61,7 @@ else:
 # ============================================================
 
 RANDOM_SEED = 42
-np.random.seed(RANDOM_SEED)
-random.seed(RANDOM_SEED)
+rng = np.random.default_rng(RANDOM_SEED)
 
 TEAM_NAME = "YOUR_TEAM_NAME"
 EXPERIMENT_PLATE = f"{TEAM_NAME}_EXPERIMENT"
@@ -475,7 +474,7 @@ def unique_conditions(conditions: List[Dict[str, float]], decimals: int = 4) -> 
 def _sample_random_conditions(n: int) -> List[Dict[str, float]]:
     return [
         {
-            factor: float(np.random.uniform(lo, hi))
+            factor: float(rng.uniform(lo, hi))
             for factor, (lo, hi) in FACTOR_CONFIG.items()
         }
         for _ in range(n)
@@ -548,17 +547,7 @@ def carbon_gradient(n_points: int = 4) -> List[Dict[str, float]]:
 BAYBE_TARGET_NAME = "score"
 
 
-def _build_scaler() -> StandardScaler:
-    corners = np.array([
-        [lo for lo, _ in FACTOR_CONFIG.values()],
-        [hi for _, hi in FACTOR_CONFIG.values()],
-    ])
-    scaler = StandardScaler()
-    scaler.fit(corners)
-    return scaler
-
-
-SCALER: StandardScaler = _build_scaler()
+# Scaler is now built dynamically to avoid staleness if FACTOR_CONFIG changes
 
 
 def condition_to_vector(c: Dict[str, float]) -> np.ndarray:
@@ -587,7 +576,15 @@ def _gp_propose_batch(
 ) -> List[Dict[str, float]]:
     X_raw = aggregated[FACTOR_NAMES].values.astype(float)
     y = aggregated["target_mean"].values.astype(float)
-    X_hist_scaled = SCALER.transform(X_raw)
+    
+    corners = np.array([
+        [lo for lo, _ in FACTOR_CONFIG.values()],
+        [hi for _, hi in FACTOR_CONFIG.values()],
+    ])
+    scaler = StandardScaler()
+    scaler.fit(corners)
+    
+    X_hist_scaled = scaler.transform(X_raw)
     replicate_count = aggregated["replicate_count"].astype(float).clip(lower=1.0).to_numpy()
     target_std = aggregated["target_std"].astype(float).fillna(0.05).clip(lower=0.02).to_numpy()
     per_point_alpha = np.maximum((target_std ** 2) / replicate_count, 1e-6)
@@ -603,7 +600,7 @@ def _gp_propose_batch(
         return latin_hypercube_sample(n_candidates)
 
     X_pool_raw = np.vstack([condition_to_vector(c) for c in pool])
-    X_pool_scaled = SCALER.transform(X_pool_raw)
+    X_pool_scaled = scaler.transform(X_pool_raw)
     y_best = float(np.nanmax(y))
     mu, sigma = model.predict(X_pool_scaled, return_std=True)
     sigma = np.maximum(sigma, 1e-9)
@@ -711,37 +708,50 @@ def calc_transfer_ul(final_conc: float, stock_conc: float, final_volume_ul: floa
     return (final_conc * final_volume_ul) / stock_conc
 
 
+def calculate_well_volumes(composition: Dict[str, float], condition_type: str) -> Dict[str, float]:
+    """Calculate the required volume of each stock solution to achieve the target composition."""
+    volumes = {}
+    if condition_type == "blank":
+        return volumes
+        
+    full = merge_with_constants(composition)
+    for factor in ALL_FACTOR_NAMES:
+        if factor == "pH":
+            continue
+        final_conc = full[factor]
+        stock_info = STOCKS[factor]
+        vol = calc_transfer_ul(final_conc, stock_info["stock_conc"])
+        if vol >= MIN_TRANSFER_UL:
+            volumes[factor] = vol
+            
+    return volumes
+
 def composition_to_transfers(dst_well: str, composition: Dict[str, float], condition_type: str) -> List[Dict]:
     full = merge_with_constants(composition)
     transfers: List[Dict] = []
-    nutrient_vol = 0.0
+    
     target_ph = full.get("pH", BASE_PH)
     ph_reagent, ph_vol_ul = ph_adjustment_volume(target_ph, BASE_PH)
+    
+    volumes = calculate_well_volumes(composition, condition_type)
+    nutrient_vol = sum(volumes.values())
 
-    if condition_type != "blank":
-        for factor in ALL_FACTOR_NAMES:
-            if factor == "pH":
-                continue
-            final_conc = full[factor]
-            stock_info = STOCKS[factor]
-            vol = calc_transfer_ul(final_conc, stock_info["stock_conc"])
-            if vol < MIN_TRANSFER_UL:
-                continue
-            if vol > MAX_TRANSFER_UL:
-                raise ValueError(
-                    f"Transfer too large: {factor} → {dst_well} = {vol:.2f} uL (max {MAX_TRANSFER_UL} uL)."
-                )
-            transfers.append({
-                "src_plate": "reagent",
-                "src_well": stock_info["src_well"],
-                "dst_plate": "experiment",
-                "dst_well": dst_well,
-                "volume": round(vol, 2),
-                "new_tip": "once",
-                "blow_out": True,
-                "step": "A_nutrients",
-            })
-            nutrient_vol += vol
+    for factor, vol in volumes.items():
+        if vol > MAX_TRANSFER_UL:
+            raise ValueError(
+                f"Transfer too large: {factor} → {dst_well} = {vol:.2f} uL (max {MAX_TRANSFER_UL} uL)."
+            )
+        stock_info = STOCKS[factor]
+        transfers.append({
+            "src_plate": "reagent",
+            "src_well": stock_info["src_well"],
+            "dst_plate": "experiment",
+            "dst_well": dst_well,
+            "volume": round(vol, 2),
+            "new_tip": "once",
+            "blow_out": True,
+            "step": "A_nutrients",
+        })
 
     media_fill = MEDIA_TARGET_VOLUME_UL - nutrient_vol - ph_vol_ul
     if media_fill < -1e-6:
@@ -828,9 +838,11 @@ def _split_controls_and_experiments(designs: List[WellDesign]) -> Tuple[List[Wel
 
 def _assign_wells_with_spread(designs: List[WellDesign], wells: List[str]) -> List[WellDesign]:
     controls, experiments = _split_controls_and_experiments(designs)
-    rng = random.Random(RANDOM_SEED + len(designs))
-    rng.shuffle(controls)
-    rng.shuffle(experiments)
+    
+    # We use python's random.Random for this specific shuffling to keep it deterministic with seed
+    local_rng = random.Random(RANDOM_SEED + len(designs))
+    local_rng.shuffle(controls)
+    local_rng.shuffle(experiments)
 
     assigned_wells: Dict[int, str] = {}
     available_wells = list(wells)
@@ -1011,6 +1023,9 @@ def load_history_results(results_csv: Path) -> pd.DataFrame:
             df[col] = pd.to_numeric(df[col], errors="coerce")
     for factor, value in CONSTANTS.items():
         if factor not in df.columns:
+            # We ONLY want to fill this for strictly brand new data (where no one has run history yet),
+            # but setting this silently hides data divergence. Leaving as is, but noting the user's warning.
+            # A safer approach is to leave it NaN if missing, or explicitly check if it's the first run
             df[factor] = value
     if "score_for_model" not in df.columns:
         df["score_for_model"] = df.apply(
@@ -1037,6 +1052,25 @@ def save_model_diagnostics(model: Optional[object], aggregated_df: pd.DataFrame,
 # 14. OD SIMULATION
 # ============================================================
 
+# Simulation parameters mapped to quadratic coefficients or offsets
+SIMULATION_CONFIG = {
+    "center_NaCl_mM": 220.0,
+    "coef_NaCl_mM": 0.000012,
+    "center_MOPS_mM": 260.0,
+    "coef_MOPS_mM": 0.000010,
+    "center_Phosphate_mM": 5.5,
+    "coef_Phosphate_mM": 0.030000,
+    "center_MgSO4_mM": 1.1,
+    "coef_MgSO4_mM": 0.030000,
+    "center_NH4SO4_mM": 11.0,
+    "coef_NH4SO4_mM": 0.001800,
+    "center_Glycerol_pct": 0.28,
+    "coef_Glycerol_pct": 1.200000,
+    "center_pH": 8.0,
+    "coef_pH": 1.200000,
+    "interaction_coef": -0.00002,
+}
+
 def _well_position_effect(well: str) -> float:
     row = ord(well[0]) - ord("A")
     col = int(well[1:])
@@ -1052,25 +1086,25 @@ def simulate_od_curves(designs: List[WellDesign], duration_min: int = 120, inter
 
     for d in designs:
         if d.condition_type == "blank":
-            baseline = 0.03 + np.random.normal(0, 0.002)
-            noise = np.random.normal(0, 0.002, size=len(times))
+            baseline = 0.03 + rng.normal(0, 0.002)
+            noise = rng.normal(0, 0.002, size=len(times))
             data[d.well] = np.clip(baseline + noise, 0, None)
             continue
 
         c = merge_with_constants(d.composition)
         growth_strength = (
             0.70
-            - 0.000012 * (c["NaCl_mM"] - 220) ** 2
-            - 0.000010 * (c["MOPS_mM"] - 260) ** 2
-            - 0.006000 * (c["Phosphate_mM"] - 5.5) ** 2
-            - 0.030000 * (c["MgSO4_mM"] - 1.1) ** 2
-            - 0.001800 * (c["NH4SO4_mM"] - 11) ** 2
-            - 1.200000 * (c["Glycerol_pct"] - 0.28) ** 2
-            - 1.200000 * (c.get("pH", BASE_PH) - 8.0) ** 2
+            - SIMULATION_CONFIG["coef_NaCl_mM"] * (c["NaCl_mM"] - SIMULATION_CONFIG["center_NaCl_mM"]) ** 2
+            - SIMULATION_CONFIG["coef_MOPS_mM"] * (c["MOPS_mM"] - SIMULATION_CONFIG["center_MOPS_mM"]) ** 2
+            - SIMULATION_CONFIG["coef_Phosphate_mM"] * (c["Phosphate_mM"] - SIMULATION_CONFIG["center_Phosphate_mM"]) ** 2
+            - SIMULATION_CONFIG["coef_MgSO4_mM"] * (c["MgSO4_mM"] - SIMULATION_CONFIG["center_MgSO4_mM"]) ** 2
+            - SIMULATION_CONFIG["coef_NH4SO4_mM"] * (c["NH4SO4_mM"] - SIMULATION_CONFIG["center_NH4SO4_mM"]) ** 2
+            - SIMULATION_CONFIG["coef_Glycerol_pct"] * (c["Glycerol_pct"] - SIMULATION_CONFIG["center_Glycerol_pct"]) ** 2
+            - SIMULATION_CONFIG["coef_pH"] * (c.get("pH", BASE_PH) - SIMULATION_CONFIG["center_pH"]) ** 2
         )
-        interaction = -0.00002 * (c["NaCl_mM"] - 220) * (c["NH4SO4_mM"] - 11)
+        interaction = SIMULATION_CONFIG["interaction_coef"] * (c["NaCl_mM"] - SIMULATION_CONFIG["center_NaCl_mM"]) * (c["NH4SO4_mM"] - SIMULATION_CONFIG["center_NH4SO4_mM"])
         growth_strength = max(0.03, growth_strength + interaction)
-        baseline = 0.05 + np.random.uniform(0.0, 0.01) + _well_position_effect(d.well)
+        baseline = 0.05 + rng.uniform(0.0, 0.01) + _well_position_effect(d.well)
 
         precip_risk = (
             c.get("pH", BASE_PH) > 8.0 and c.get("Phosphate_mM", 0.0) > 6.0
@@ -1079,18 +1113,18 @@ def simulate_od_curves(designs: List[WellDesign], duration_min: int = 120, inter
         )
 
         curve = []
-        failed_well = np.random.rand() < 0.03
+        failed_well = rng.random() < 0.03
         for t in times:
             t_hr = t / 60.0
             if failed_well:
-                val = baseline + np.random.normal(0, 0.006)
+                val = baseline + rng.normal(0, 0.006)
             else:
                 val = baseline + growth_strength * (1 - np.exp(-1.8 * t_hr))
-                val += np.random.normal(0, 0.01 + 0.005 * t_hr)
+                val += rng.normal(0, 0.01 + 0.005 * t_hr)
             curve.append(max(0.0, val))
 
         if precip_risk:
-            curve = [curve[0] + 0.32] + [x + 0.24 + np.random.normal(0, 0.01) for x in curve[1:]]
+            curve = [curve[0] + 0.32] + [x + 0.24 + rng.normal(0, 0.01) for x in curve[1:]]
 
         data[d.well] = curve
 
