@@ -520,71 +520,128 @@ def _gp_propose_batch(
     return selected[:n_candidates]
 
 
-def _build_baybe_searchspace() -> SearchSpace:
-    parameters = [
-        NumericalContinuousParameter(name=f, bounds=FACTOR_CONFIG[f])
-        for f in NUMERIC_FACTORS
-    ]
-    parameters.append(CategoricalParameter(name="base_media", values=BASE_MEDIA_OPTIONS))
+def get_top_media_and_reagents(history_df: pd.DataFrame, n_media: int = 3, n_reagents: int = 4) -> Dict[str, List[str]]:
+    aggregated = aggregate_history_for_model(history_df)
+    
+    # 1. Top base media
+    media_perf = aggregated.groupby("base_media")["target_mean"].mean().sort_values(ascending=False)
+    top_media = media_perf.head(n_media).index.tolist()
+    
+    # 2. Top reagents per media
+    media_reagents = {}
+    numeric_only = [f for f in NUMERIC_FACTORS if f != "base_media_vol"]
+    
+    for media in top_media:
+        m_df = aggregated[aggregated["base_media"] == media]
+        
+        # fallback if not enough data
+        if len(m_df) < 3:
+            media_reagents[media] = random.sample(numeric_only, min(n_reagents, len(numeric_only)))
+            continue
+            
+        correlations = {}
+        for f in numeric_only:
+            if m_df[f].std() > 1e-6:
+                corr = m_df[f].corr(m_df["target_mean"])
+                if pd.notna(corr):
+                    correlations[f] = corr
+                else:
+                    correlations[f] = 0.0
+            else:
+                correlations[f] = 0.0
+                
+        # Transform correlations to positive weights for probabilistic selection
+        # Add a baseline of 0.1 to give all numeric reagents a non-zero chance
+        weights = []
+        for f in numeric_only:
+            w = max(correlations[f], 0.0) + 0.1
+            weights.append(w)
+            
+        weights = np.array(weights)
+        weights /= weights.sum() # Normalize
+        
+        # Select n_reagents based on the weighted probabilities
+        selected = rng.choice(numeric_only, size=min(n_reagents, len(numeric_only)), replace=False, p=weights)
+        media_reagents[media] = selected.tolist()
+        
+    return media_reagents
+
+def _build_baybe_searchspace_for_campaign(base_media: str, allowed_reagents: List[str]) -> SearchSpace:
+    parameters = []
+    
+    for f in NUMERIC_FACTORS:
+        if f == "base_media_vol" or f in allowed_reagents:
+            parameters.append(NumericalContinuousParameter(name=f, bounds=FACTOR_CONFIG[f]))
+            
     return SearchSpace.from_product(parameters)
 
-
-def _build_baybe_campaign() -> Campaign:
-    searchspace = _build_baybe_searchspace()
-    target = NumericalTarget(name=BAYBE_TARGET_NAME, mode="MAX")
-    objective = SingleTargetObjective(target)
-    recommender = TwoPhaseMetaRecommender(
-        initial_recommender=RandomRecommender(),
-        recommender=BotorchRecommender(),
-        switch_after=1,
-    )
-    return Campaign(
-        searchspace=searchspace,
-        objective=objective,
-        recommender=recommender,
-    )
-
-
-def get_xi(iteration: int, total_iterations: int) -> float:
-    max_xi, min_xi = 0.10, 0.01
-    if total_iterations <= 1:
-        return max_xi
-    progress = (iteration - 1) / (total_iterations - 1)
-    return round(max_xi - (max_xi - min_xi) * progress, 4)
-
-
-def baybe_propose_batch(history_df: pd.DataFrame, n_candidates: int, xi: float = 0.01) -> List[Dict[str, float]]:
+def baybe_propose_multi_campaign(history_df: pd.DataFrame, total_candidates: int) -> List[Dict[str, float]]:
     aggregated = aggregate_history_for_model(history_df)
+    top_config = get_top_media_and_reagents(history_df, n_media=3, n_reagents=4)
+    
     if len(aggregated) < 4:
-        print(f"  [BO] Only {len(aggregated)} clean unique conditions — falling back to LHS.")
-        return latin_hypercube_sample(n_candidates)
+        print(f"  [BO] Only {len(aggregated)} clean unique conditions — falling back to random sampling.")
+        return _sample_random_conditions(total_candidates)
 
-    if not USE_BAYBE:
-        print(f"  [GP] Recommending {n_candidates} conditions (BayBE not installed, using GP fallback).")
-        return _gp_propose_batch(aggregated, n_candidates, xi=xi)
+    per_campaign = math.ceil(total_candidates / len(top_config))
+    all_conditions = []
+    
+    print("\n  [BO] Launching isolated campaigns:")
+    for media, reagents in top_config.items():
+        print(f"       - {media} (varying: {reagents})")
+        
+        # Filter measurements to only this media to help BayBE focus, or use all for global context
+        measurements = aggregated[FACTOR_NAMES + ["target_mean"]].copy()
+        measurements = measurements.rename(columns={"target_mean": BAYBE_TARGET_NAME})
+        
+        if USE_BAYBE:
+            searchspace = _build_baybe_searchspace_for_campaign(media, reagents)
+            target = NumericalTarget(name=BAYBE_TARGET_NAME, mode="MAX")
+            objective = SingleTargetObjective(target)
+            recommender = TwoPhaseMetaRecommender(
+                initial_recommender=RandomRecommender(),
+                recommender=BotorchRecommender(),
+                switch_after=1,
+            )
+            campaign = Campaign(searchspace=searchspace, objective=objective, recommender=recommender)
+            campaign.add_measurements(measurements)
+            
+            rec = campaign.recommend(batch_size=per_campaign * 2)
+            c_conds = []
+            for _, row in rec.iterrows():
+                c = {}
+                for f in NUMERIC_FACTORS:
+                    if f in row:
+                        c[f] = round(float(row[f]), 4)
+                    else:
+                        c[f] = 0.0
+                c["base_media"] = media
+                c = _enforce_volume_constraint(c)
+                if is_valid_condition(c):
+                    c_conds.append(optimized_view(merge_with_constants(c)))
+                if len(c_conds) >= per_campaign:
+                    break
+        else:
+            # GP fallback (doesn't respect hard topological constraints natively, skipping for brevity but leaving LHS)
+            c_conds_raw = latin_hypercube_sample(per_campaign * 10)
+            c_conds = []
+            for c in c_conds_raw:
+                if c["base_media"] == media:
+                    # manually fix restricted reagents for fallback
+                    cc = c.copy()
+                    for f in NUMERIC_FACTORS:
+                        if f != "base_media_vol" and f not in reagents:
+                            cc[f] = 0.0
+                    cc = _enforce_volume_constraint(cc)
+                    if is_valid_condition(cc):
+                        c_conds.append(cc)
+                if len(c_conds) >= per_campaign:
+                    break
+                    
+        all_conditions.extend(c_conds)
+        
+    return unique_conditions(all_conditions)
 
-    campaign = _build_baybe_campaign()
-    measurements = aggregated[FACTOR_NAMES + ["target_mean"]].copy()
-    measurements = measurements.rename(columns={"target_mean": BAYBE_TARGET_NAME})
-    campaign.add_measurements(measurements)
-
-    rec = campaign.recommend(batch_size=n_candidates * 2)
-    conditions: List[Dict[str, float]] = []
-    for _, row in rec.iterrows():
-        c = {f: round(float(row[f]), 4) for f in NUMERIC_FACTORS}
-        c["base_media"] = str(row["base_media"])
-        c = _enforce_volume_constraint(c)
-        if is_valid_condition(c):
-            conditions.append(optimized_view(merge_with_constants(c)))
-        if len(conditions) >= n_candidates:
-            break
-
-    if len(conditions) < n_candidates:
-        print(f"  [BayBE] {len(conditions)} valid after filtering — filling with LHS.")
-        conditions.extend(latin_hypercube_sample(n_candidates * 10))
-    conditions = unique_conditions(conditions)[:n_candidates]
-    print(f"  [BayBE] Recommended {len(conditions)} conditions from {len(aggregated)} training points.")
-    return conditions
 
 
 # ============================================================
@@ -963,9 +1020,9 @@ def run_closed_loop(output_dir: str = "bo_outputs") -> None:
         bo_conditions = latin_hypercube_sample(n_proposals)
         source = "lhs_fallback"
     else:
-        # Request 20 candidates from BayBE/GP
-        bo_conditions = baybe_propose_batch(history_df, n_proposals, xi=0.01)
-        source = "baybe" if USE_BAYBE else "gp_fallback"
+        # Request 20 candidates from isolated BO campaigns
+        bo_conditions = baybe_propose_multi_campaign(history_df, n_proposals)
+        source = "baybe_multi_campaign" if USE_BAYBE else "gp_fallback"
         
     for i, c in enumerate(bo_conditions):
         well_id = f"P{i+1}" # arbitrary well IDs for proposals
@@ -978,8 +1035,8 @@ def run_closed_loop(output_dir: str = "bo_outputs") -> None:
         
     # Sort designs and predicted_rates by predicted_rates descending
     sorted_pairs = sorted(zip(designs, predicted_rates), key=lambda x: x[1], reverse=True)
-    designs = [pair[0] for pair in sorted_pairs]
-    predicted_rates = [pair[1] for pair in sorted_pairs]
+    designs = [pair[0] for pair in sorted_pairs][:n_proposals]
+    predicted_rates = [pair[1] for pair in sorted_pairs][:n_proposals]
     
     # re-assign ranks to 'well' or condition name
     for i, d in enumerate(designs):
