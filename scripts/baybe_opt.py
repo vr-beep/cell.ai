@@ -44,7 +44,11 @@ from baybe.targets import NumericalTarget
 TOTAL_VOL_UL = 200
 
 # Reagent columns match _plate_condition_map.csv headers exactly
-REAGENT_COLS = ["yeast_extract", "tryptone", "mops", "na_l_glut", "kh2po4", "glucose"]
+REAGENT_COLS = [
+    "yeast_extract", "tryptone", "mops", "na_l_glut", "kh2po4", "glucose",
+    # Round 2 additions (mechanistic hypothesis conditions)
+    "mgso4", "trace_metals", "glycerol", "feso4", "nacit",
+]
 # ALL_VOL_COLS: all parameters optimized by BayBE (cells is now included)
 ALL_VOL_COLS = ["base_media_vol"] + REAGENT_COLS + ["cells"]
 
@@ -55,13 +59,23 @@ CELL_VOL_BOUNDS = (10, 100)         # second plate tested 10–100 µL inoculum
 MAX_REAGENT_SUM_UL = 60             # total additive volume across active reagents
 MIN_WATER_UL = 10                   # minimum water to reserve for dilution
 
+# Tighter per-reagent bounds for specialty supplements introduced in round 2.
+# These are biologically active at low doses; cap well below REAGENT_VOL_BOUNDS.
+SPECIALTY_REAGENT_BOUNDS: dict[str, tuple[float, float]] = {
+    "mgso4":       (0, 15),   # magnesium sulfate; tested at 4 µL
+    "trace_metals": (0, 15),  # trace metal mix; tested at 4 µL
+    "glycerol":    (0, 50),   # carbon-source supplement; tested at 36 µL
+    "feso4":       (0, 15),   # iron sulfate; tested at 4 µL
+    "nacit":       (0, 15),   # sodium citrate; tested at 4 µL
+}
+
 BASE_MEDIA_OPTIONS = [
     "Novel Bio NBxCyclone Media",
     "Prepared LBv2 Media",
     "Defined-Minimal Media",
     "Semi-Defined Media",
     "High Buffer Defined Media",
-    "Defined-Glycerol",
+    "Defined Glycerol Media",
 ]
 
 TARGET_COL = "mean_growth_rate_per_hr"
@@ -226,7 +240,9 @@ def _make_searchspace(active_reagents: list[str]) -> SearchSpace:
     parameters = [
         NumericalContinuousParameter("base_media_vol", bounds=BASE_MEDIA_VOL_BOUNDS),
         *[
-            NumericalContinuousParameter(col, bounds=REAGENT_VOL_BOUNDS)
+            NumericalContinuousParameter(
+                col, bounds=SPECIALTY_REAGENT_BOUNDS.get(col, REAGENT_VOL_BOUNDS)
+            )
             for col in active_reagents
         ],
         NumericalContinuousParameter("cells", bounds=CELL_VOL_BOUNDS),
@@ -361,6 +377,11 @@ def format_output(
         "na_l_glut":                    proposals["na_l_glut"].values,
         "kh2po4":                       proposals["kh2po4"].values,
         "glucose":                      proposals["glucose"].values,
+        "mgso4":                        proposals["mgso4"].values,
+        "trace_metals":                 proposals["trace_metals"].values,
+        "glycerol":                     proposals["glycerol"].values,
+        "feso4":                        proposals["feso4"].values,
+        "nacit":                        proposals["nacit"].values,
         "water":                        proposals["water"].values,
         "cells":                        proposals["cells"].values,
         "total":                        proposals["total"].values,

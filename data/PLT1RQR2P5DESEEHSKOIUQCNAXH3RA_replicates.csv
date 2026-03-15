@@ -1,0 +1,14 @@
+plate_id,plate_barcode,condition_id,reagent_name,n_replicates,mean_growth_rate_per_hr,median_growth_rate_per_hr,variance_growth_rate_per_hr,mean_max_absorbance_OD600,mean_max_cell_concentration_cells_per_mL
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,DefGly-Rich_1,"Def-Glycerol, MOPS (pH 7), Tryptone, Yeast Extract",1,0.403802,0.403802,,0.4808,480800000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HB-1_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Water, Yeast Extract",1,1.658348,1.658348,,0.5386,538600000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HB-2_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Water, Yeast Extract",1,1.46822,1.46822,,0.5728,572800000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HB-3_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Water, Yeast Extract",1,1.462706,1.462706,,0.5588,558800000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HB-4_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Water, Yeast Extract",1,1.256477,1.256477,,0.5759,575900000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HBD-FeCit_1,"FeSO4, High Buffer Defined, Na Citrate, Na L-Glutamate, Tryptone, Yeast Extract",1,1.259332,1.259332,,0.4079,407900000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HBD-Gly_1,"Glycerol (10%), High Buffer Defined, Na L-Glutamate, Tryptone, Yeast Extract",1,1.247803,1.247803,,0.519,519000000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HBD-MaxN_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Yeast Extract",1,1.595513,1.595513,,0.5259,525900000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,HBD-Metals_1,"High Buffer Defined, MgSO4, Na L-Glutamate, Trace Metals, Tryptone, Yeast Extract",1,0.719027,0.719027,,0.722,722000000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,NB-CTL_1,Novel Bio Cyclone,1,1.732171,1.732171,,0.3663,366300000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,SD-1_1,"MOPS (pH 7), Semi-Defined, Tryptone, Yeast Extract",1,1.391121,1.391121,,0.582,582000000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,SD-3_1,"MOPS (pH 7), Semi-Defined, Tryptone, Yeast Extract",1,1.314644,1.314644,,0.5759,575900000
+PLT1RQR2P5DESEEHSKOIUQCNAXH3RA,CellAI Experiment Plate 2,SD-Glut_1,"MOPS (pH 7), Na L-Glutamate, Semi-Defined, Tryptone, Yeast Extract",1,1.33396,1.33396,,0.599,599000000

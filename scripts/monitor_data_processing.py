@@ -16,6 +16,8 @@ Examples:
     python scripts/monitor_data_processing.py PLT12V3H4WNRSR6CWJ7A72ODORU7EI
     # Plate 2: PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ
     python scripts/monitor_data_processing.py PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ
+    # Plate 3: PLT1RQR2P5DESEEHSKOIUQCNAXH3RA
+    python scripts/monitor_data_processing.py PLT1RQR2P5DESEEHSKOIUQCNAXH3RA
 """
 
 import argparse
