@@ -43,7 +43,7 @@ else:
     try:
         from baybe import Campaign
         from baybe.objectives import SingleTargetObjective
-        from baybe.parameters import NumericalContinuousParameter
+        from baybe.parameters import NumericalContinuousParameter, CategoricalParameter
         from baybe.recommenders import RandomRecommender, TwoPhaseMetaRecommender
         try:
             from baybe.recommenders import BotorchRecommender
@@ -144,119 +144,38 @@ DEFAULT_COMPOSITION = ROUND_COMPOSITION[2]
 
 # ---------------------------------------------------------------------------
 # Phase-2 optimization setup
-# Only the top 3 factors are optimized. All other components are kept fixed.
+# Optimized volumes (uL) for liquid components
 # ---------------------------------------------------------------------------
-OPTIMIZED_FACTOR_CONFIG: Dict[str, Tuple[float, float]] = {
-    "Yeast_gL": (5.0, 15.0),
-    "Tryptone_gL": (5.0, 15.0),
-    "MOPS_mM": (40.0, 100.0),
-}
+NUMERIC_FACTORS = ["yeast_extract", "tryptone", "mops", "na_l_glut", "kh2po4", "glucose"]
+OPTIMIZED_FACTOR_CONFIG: Dict[str, Tuple[float, float]] = {f: (0.0, MAX_TRANSFER_UL) for f in NUMERIC_FACTORS}
 
-# Fixed constants for the non-optimized ingredients.
-CONSTANTS: Dict[str, float] = {
-    "NaCl_mM": 180.0,
-    "Glycerol_pct": 0.20,
-    "pH": 8.0,
-    "Phosphate_mM": 4.0,
-    "MgSO4_mM": 1.0,
-    "NH4SO4_mM": 12.0,
-}
+try:
+    _media_df = pd.read_csv("reagents/base_media_set.csv")
+    BASE_MEDIA_OPTIONS = _media_df["media_name"].dropna().tolist()
+except Exception:
+    BASE_MEDIA_OPTIONS = ["Novel Bio NBxCyclone Media"]
 
-ALL_FACTOR_CONFIG: Dict[str, Tuple[float, float]] = {
-    **OPTIMIZED_FACTOR_CONFIG,
-    "NaCl_mM": (125.0, 260.0),
-    "Glycerol_pct": (0.10, 0.50),
-    "pH": (7.8, 8.2),
-    "Phosphate_mM": (2.0, 8.0),
-    "MgSO4_mM": (0.5, 2.0),
-    "NH4SO4_mM": (5.0, 20.0),
-}
+FACTOR_NAMES = ["base_media"] + NUMERIC_FACTORS
+ALL_FACTOR_NAMES = FACTOR_NAMES + ["water"]
 
+CONSTANTS: Dict[str, float] = {}
 FACTOR_CONFIG = OPTIMIZED_FACTOR_CONFIG
-FACTOR_NAMES = list(FACTOR_CONFIG.keys())
-ALL_FACTOR_NAMES = ["Yeast_gL", "Tryptone_gL", "MOPS_mM", "NaCl_mM", "Phosphate_mM", "MgSO4_mM", "NH4SO4_mM", "Glycerol_pct", "pH"]
 
-STOCKS: Dict[str, Dict] = {
-    "Yeast_gL": {"stock_conc": 100.0, "src_well": "A1"},
-    "Tryptone_gL": {"stock_conc": 100.0, "src_well": "A2"},
-    "MOPS_mM": {"stock_conc": 1000.0, "src_well": "A3"},
-    "NaCl_mM": {"stock_conc": 5000.0, "src_well": "A4"},
-    "Phosphate_mM": {"stock_conc": 1000.0, "src_well": "A5"},
-    "MgSO4_mM": {"stock_conc": 500.0, "src_well": "A6"},
-    "NH4SO4_mM": {"stock_conc": 1000.0, "src_well": "A7"},
-    "Glycerol_pct": {"stock_conc": 10.0, "src_well": "A8"},
-    "NaOH": {"stock_conc": 1000.0, "src_well": "A9"},
-    "HCl": {"stock_conc": 1000.0, "src_well": "A10"},
-    "BaseMedia": {"stock_conc": 1.0, "src_well": "B1"},
+BASELINE_CONDITION = {
+    "base_media": BASE_MEDIA_OPTIONS[0],
+    "yeast_extract": 0.0,
+    "tryptone": 0.0,
+    "mops": 0.0,
+    "na_l_glut": 0.0,
+    "kh2po4": 0.0,
+    "glucose": 0.0,
 }
-CELL_SOURCE_WELL = "C1"
-
-BASE_PH = 7.5
-BUFFER_CAPACITY_UL_PER_PH_UNIT = 8.0
-# Replace this with measured values on competition day.
-PH_ADJUSTMENT_LOOKUP_UL: Dict[float, float] = {
-    7.0: 4.0,
-    7.2: 2.2,
-    7.5: 0.0,
-    7.8: 2.4,
-    8.0: 4.3,
-    8.3: 6.7,
-    8.5: 8.3,
+CENTER_POINT = {
+    "base_media": BASE_MEDIA_OPTIONS[0],
+    **{f: 20.0 for f in NUMERIC_FACTORS}
 }
 
-REAGENT_COST: Dict[str, float] = {
-    "Yeast_gL": 0.020,
-    "Tryptone_gL": 0.015,
-    "MOPS_mM": 0.050,
-    "NaCl_mM": 0.001,
-    "Phosphate_mM": 0.005,
-    "MgSO4_mM": 0.010,
-    "NH4SO4_mM": 0.008,
-    "Glycerol_pct": 0.030,
-    "pH": 0.000,
-}
-MAX_COST_PER_WELL: Optional[float] = 15.0
-
-PRECIPITATION_OD_THRESHOLD = 0.30
-PRECIPITATION_STABLE_DELTA_THRESHOLD = 0.06
-PRECIPITATION_EARLY_SLOPE_THRESHOLD = 0.01
-
-# Wells with endpoint OD above this are excluded from GP training
-ENDPOINT_OD_MAX_FOR_MODEL = 2.5
-
-# Ranking / BO target weights
-USE_COMPOSITE_TARGET = True
-COMPOSITE_WEIGHTS = {
-    "mu_max_per_hr": 0.55,
-    "endpoint_od": 0.25,
-    "auc": 0.20,
-}
-PRECIPITATION_SCORE_PENALTY = 2.0
-
-# Practicality penalties
-PRACTICALITY_PENALTY_WEIGHT = 0.08
-SMALL_TRANSFER_SOFT_THRESHOLD_UL = 2.5
-PH_ADJUST_SOFT_THRESHOLD_UL = 8.0
-
-BASELINE_CONDITION: Dict[str, float] = {
-    "Yeast_gL": 10.0,
-    "Tryptone_gL": 10.0,
-    "MOPS_mM": 70.0,
-}
-CENTER_POINT: Dict[str, float] = {
-    factor: round((lo + hi) / 2.0, 4)
-    for factor, (lo, hi) in FACTOR_CONFIG.items()
-}
-
-MANUAL_MEDIA_PANEL: List[Dict[str, float]] = [
-    {"Yeast_gL": 10.0, "Tryptone_gL": 10.0, "MOPS_mM": 70.0},
-    {"Yeast_gL": 15.0, "Tryptone_gL": 15.0, "MOPS_mM": 100.0},
-    {"Yeast_gL": 5.0, "Tryptone_gL": 5.0, "MOPS_mM": 40.0},
-    {"Yeast_gL": 15.0, "Tryptone_gL": 5.0, "MOPS_mM": 70.0},
-    {"Yeast_gL": 5.0, "Tryptone_gL": 15.0, "MOPS_mM": 70.0},
-]
-
-SIMULATION_MODE = True
+SIMULATION_MODE = False
 
 
 # ============================================================
