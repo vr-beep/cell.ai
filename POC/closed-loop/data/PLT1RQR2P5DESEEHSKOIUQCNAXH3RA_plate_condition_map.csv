@@ -1,0 +1,14 @@
+well,condition,base_media,base_media_vol,yeast_extract,tryptone,mops,na_l_glut,kh2po4,glucose,mgso4,trace_metals,glycerol,feso4,nacit,water,cells,total
+B2,HB-1,High Buffer Defined Media,110,10.1,28.0,0,10.0,0,0,0,0,0,0,0,21.9,20,200
+B3,HB-2,High Buffer Defined Media,110,16.4,22.6,0,10.0,0,0,0,0,0,0,0,21.0,20,200
+B4,HB-3,High Buffer Defined Media,110,16.8,29.8,0,10.0,0,0,0,0,0,0,0,13.4,20,200
+B5,SD-1,Semi-Defined Media,119.4,30.0,21.2,9.4,0,0,0,0,0,0,0,0,0,20,200
+B6,HB-4,High Buffer Defined Media,110,13.1,25.2,0,7.9,0,0,0,0,0,0,0,23.8,20,200
+B7,SD-3,Semi-Defined Media,126.9,25.0,17.1,11.0,0,0,0,0,0,0,0,0,0,20,200
+B8,NB-CTL,Novel Bio NBxCyclone Media,180,0,0,0,0,0,0,0,0,0,0,0,0,20,200
+D2,HBD-MaxN,High Buffer Defined Media,115,20,30,0,15,0,0,0,0,0,0,0,0,20,200
+D3,SD-Glut,Semi-Defined Media,120,14,26,10,10,0,0,0,0,0,0,0,0,20,200
+D4,HBD-Metals,High Buffer Defined Media,122,14,26,0,10,0,0,4,4,0,0,0,0,20,200
+D5,HBD-Gly,High Buffer Defined Media,100,14,20,0,10,0,0,0,0,36,0,0,0,20,200
+D6,HBD-FeCit,High Buffer Defined Media,122,14,26,0,10,0,0,0,0,0,4,4,0,20,200
+D7,DefGly-Rich,Defined Glycerol Media,120,20,26,14,0,0,0,0,0,0,0,0,0,20,200
