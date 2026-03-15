@@ -23,11 +23,18 @@ import streamlit as st
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-DATA_DIR = Path(__file__).parent / "data"
+DATA_DIR = Path(__file__).parent / "data" / "data_by_round"
 BO_DIR = Path(__file__).parent / "bo_outputs"
 WORKFLOWS_DIR = Path(__file__).parent / "workflows"
-STATE_FILE = DATA_DIR / "orchestrator_state.json"
-LOG_FILE = DATA_DIR / "orchestrator_log.json"
+STATE_FILE = Path(__file__).parent / "data" / "orchestrator_state.json"
+LOG_FILE = Path(__file__).parent / "data" / "orchestrator_log.json"
+
+# Human-readable labels for round selectbox
+ROUND_LABELS = {
+    "seed_round": "Seed Round",
+    "round1": "Round 1",
+    "round2": "Round 2",
+}
 
 # 96-well plate layout
 ROWS = list("ABCDEFGH")
@@ -319,13 +326,13 @@ def sidebar():
 
     plates = discover_plates()
     if not plates:
-        st.sidebar.warning("No plate data found in data/")
+        st.sidebar.warning("No plate data found in data/data_by_round/")
         return None
 
     plate_id = st.sidebar.selectbox(
-        "Select Plate",
+        "Select Round",
         plates,
-        format_func=lambda x: f"{x[:12]}..." if len(x) > 12 else x,
+        format_func=lambda x: ROUND_LABELS.get(x, x),
     )
 
     st.sidebar.divider()
@@ -359,12 +366,13 @@ def main():
     plate_id = sidebar()
     if plate_id is None:
         st.title("Cell.ai")
-        st.info("No plate data found. Place CSV files in the `data/` directory.")
+        st.info("No plate data found. Place CSV files in the `data/data_by_round/` directory.")
         return
 
     # Header
     st.title("🧫 Cell.ai — Media Optimization Dashboard")
-    st.caption(f"Plate: `{plate_id}` | Organism: *V. natriegens* | Target: maximize growth rate")
+    round_label = ROUND_LABELS.get(plate_id, plate_id)
+    st.caption(f"Round: **{round_label}** | Organism: *V. natriegens* | Target: maximize growth rate")
 
     # Load all data
     growth = load_growth(plate_id)
