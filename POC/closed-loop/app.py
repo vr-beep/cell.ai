@@ -34,6 +34,7 @@ ROUND_LABELS = {
     "seed_round": "Seed Round",
     "round1": "Round 1",
     "round2": "Round 2",
+    "round3": "Round 3",
 }
 
 # 96-well plate layout
