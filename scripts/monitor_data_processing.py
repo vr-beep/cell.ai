@@ -18,9 +18,11 @@ Examples:
     python scripts/monitor_data_processing.py PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ
     # Plate 3: PLT1RQR2P5DESEEHSKOIUQCNAXH3RA
     python scripts/monitor_data_processing.py PLT1RQR2P5DESEEHSKOIUQCNAXH3RA
-    # Plate 4: PLT1RQR2P5DESEEHSKOIUQCNAXH3RA
+    # FAILED Plate 4: PLT1RQR2P5DESEEHSKOIUQCNAXH3RA
     #python scripts/monitor_data_processing.py PLT1RQR2P5DESEEHSKOIUQCNAXH3RA \
     #--plate-map data/PLT1RQR2P5DESEEHSKOIUQCNAXH3RA_round4_plate_condition_map.csv
+    # Plate 4 new run: PLT145RIEW6K4ZTEUG4OOFQJQAXHL4/
+    python scripts/monitor_data_processing.py PLT145RIEW6K4ZTEUG4OOFQJQAXHL4
 """
 
 import argparse
