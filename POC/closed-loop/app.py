@@ -421,7 +421,7 @@ def main():
 
             st.caption(f"{ts_data['well'].nunique()} wells, {ts_data.groupby('well').size().iloc[0]} timepoints each")
         else:
-            st.warning("No timeseries data. Run `monitor_data_processing.py` first.")
+            st.info("No raw timeseries data available for this round.")
 
     # --- Tab 3: Rankings ---
     with tab_ranking:
