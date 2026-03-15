@@ -94,24 +94,26 @@ CONTROL_SPREAD_ORDER = [
 ]
 
 ROUND_WELL_BUDGET: Dict[int, int] = {
-    1: 60,
-    2: 48,
-    3: 32,
+    1: 8,
+    2: 8,
+    3: 8,
+    4: 8,
+    5: 8,
 }
-DEFAULT_WELL_BUDGET = 32
+DEFAULT_WELL_BUDGET = 8
 
 ROUND_COMPOSITION: Dict[int, Dict[str, int]] = {
     1: dict(
-        n_lhs=24,
-        n_media_panel=8,
-        n_ph_grad=8,
-        n_nacl_grad=6,
-        n_carbon_grad=4,
+        n_lhs=2,
+        n_media_panel=2,
+        n_ph_grad=0,
+        n_nacl_grad=0,
+        n_carbon_grad=0,
         n_bo=0,
         n_repeat=0,
-        n_center=4,
-        n_baseline=4,
-        n_blanks=2,
+        n_center=2,
+        n_baseline=1,
+        n_blanks=1,
     ),
     2: dict(
         n_lhs=0,
@@ -119,11 +121,11 @@ ROUND_COMPOSITION: Dict[int, Dict[str, int]] = {
         n_ph_grad=0,
         n_nacl_grad=0,
         n_carbon_grad=0,
-        n_bo=24,
-        n_repeat=8,
-        n_center=8,
-        n_baseline=4,
-        n_blanks=4,
+        n_bo=4,
+        n_repeat=1,
+        n_center=1,
+        n_baseline=1,
+        n_blanks=1,
     ),
     3: dict(
         n_lhs=0,
@@ -131,31 +133,30 @@ ROUND_COMPOSITION: Dict[int, Dict[str, int]] = {
         n_ph_grad=0,
         n_nacl_grad=0,
         n_carbon_grad=0,
-        n_bo=16,
-        n_repeat=6,
-        n_center=4,
-        n_baseline=4,
-        n_blanks=2,
+        n_bo=5,
+        n_repeat=1,
+        n_center=1,
+        n_baseline=0,
+        n_blanks=1,
     ),
 }
-DEFAULT_COMPOSITION = ROUND_COMPOSITION[3]
+DEFAULT_COMPOSITION = ROUND_COMPOSITION[2]
 
 # ---------------------------------------------------------------------------
 # Phase-2 optimization setup
 # Only the top 3 factors are optimized. All other components are kept fixed.
 # ---------------------------------------------------------------------------
 OPTIMIZED_FACTOR_CONFIG: Dict[str, Tuple[float, float]] = {
-    # 7.5-15 g/L NaCl is roughly 128-257 mM. Keep the BO range centered there.
-    "NaCl_mM": (125.0, 260.0),
-    "Glycerol_pct": (0.10, 0.50),  # Carbon source; CCD uses Glycerol
-    # Latest small-scale V. natriegens work points to a narrow pH sweet spot.
-    "pH": (7.8, 8.2),
+    "Yeast_gL": (5.0, 15.0),
+    "Tryptone_gL": (5.0, 15.0),
+    "MOPS_mM": (40.0, 100.0),
 }
 
 # Fixed constants for the non-optimized ingredients.
-# MOPS 20–40 mM per literature/CCD; 250 mM causes osmotic stress.
 CONSTANTS: Dict[str, float] = {
-    "MOPS_mM": 30.0,
+    "NaCl_mM": 180.0,
+    "Glycerol_pct": 0.20,
+    "pH": 8.0,
     "Phosphate_mM": 4.0,
     "MgSO4_mM": 1.0,
     "NH4SO4_mM": 12.0,
@@ -163,7 +164,9 @@ CONSTANTS: Dict[str, float] = {
 
 ALL_FACTOR_CONFIG: Dict[str, Tuple[float, float]] = {
     **OPTIMIZED_FACTOR_CONFIG,
-    "MOPS_mM": (180.0, 350.0),
+    "NaCl_mM": (125.0, 260.0),
+    "Glycerol_pct": (0.10, 0.50),
+    "pH": (7.8, 8.2),
     "Phosphate_mM": (2.0, 8.0),
     "MgSO4_mM": (0.5, 2.0),
     "NH4SO4_mM": (5.0, 20.0),
@@ -171,20 +174,22 @@ ALL_FACTOR_CONFIG: Dict[str, Tuple[float, float]] = {
 
 FACTOR_CONFIG = OPTIMIZED_FACTOR_CONFIG
 FACTOR_NAMES = list(FACTOR_CONFIG.keys())
-ALL_FACTOR_NAMES = ["NaCl_mM", "MOPS_mM", "Phosphate_mM", "MgSO4_mM", "NH4SO4_mM", "Glycerol_pct", "pH"]
+ALL_FACTOR_NAMES = ["Yeast_gL", "Tryptone_gL", "MOPS_mM", "NaCl_mM", "Phosphate_mM", "MgSO4_mM", "NH4SO4_mM", "Glycerol_pct", "pH"]
 
 STOCKS: Dict[str, Dict] = {
-    "NaCl_mM": {"stock_conc": 5000.0, "src_well": "A1"},
-    "MOPS_mM": {"stock_conc": 1000.0, "src_well": "A2"},
-    "Phosphate_mM": {"stock_conc": 1000.0, "src_well": "A3"},
-    "MgSO4_mM": {"stock_conc": 500.0, "src_well": "A4"},
-    "NH4SO4_mM": {"stock_conc": 1000.0, "src_well": "A5"},
-    "Glycerol_pct": {"stock_conc": 10.0, "src_well": "A6"},
-    "NaOH": {"stock_conc": 1000.0, "src_well": "A7"},
-    "HCl": {"stock_conc": 1000.0, "src_well": "A8"},
+    "Yeast_gL": {"stock_conc": 100.0, "src_well": "A1"},
+    "Tryptone_gL": {"stock_conc": 100.0, "src_well": "A2"},
+    "MOPS_mM": {"stock_conc": 1000.0, "src_well": "A3"},
+    "NaCl_mM": {"stock_conc": 5000.0, "src_well": "A4"},
+    "Phosphate_mM": {"stock_conc": 1000.0, "src_well": "A5"},
+    "MgSO4_mM": {"stock_conc": 500.0, "src_well": "A6"},
+    "NH4SO4_mM": {"stock_conc": 1000.0, "src_well": "A7"},
+    "Glycerol_pct": {"stock_conc": 10.0, "src_well": "A8"},
+    "NaOH": {"stock_conc": 1000.0, "src_well": "A9"},
+    "HCl": {"stock_conc": 1000.0, "src_well": "A10"},
     "BaseMedia": {"stock_conc": 1.0, "src_well": "B1"},
 }
-CELL_SOURCE_WELL = "A1"
+CELL_SOURCE_WELL = "C1"
 
 BASE_PH = 7.5
 BUFFER_CAPACITY_UL_PER_PH_UNIT = 8.0
@@ -200,8 +205,10 @@ PH_ADJUSTMENT_LOOKUP_UL: Dict[float, float] = {
 }
 
 REAGENT_COST: Dict[str, float] = {
-    "NaCl_mM": 0.001,
+    "Yeast_gL": 0.020,
+    "Tryptone_gL": 0.015,
     "MOPS_mM": 0.050,
+    "NaCl_mM": 0.001,
     "Phosphate_mM": 0.005,
     "MgSO4_mM": 0.010,
     "NH4SO4_mM": 0.008,
@@ -232,9 +239,9 @@ SMALL_TRANSFER_SOFT_THRESHOLD_UL = 2.5
 PH_ADJUST_SOFT_THRESHOLD_UL = 8.0
 
 BASELINE_CONDITION: Dict[str, float] = {
-    "NaCl_mM": 180.0,
-    "Glycerol_pct": 0.20,
-    "pH": 8.0,
+    "Yeast_gL": 10.0,
+    "Tryptone_gL": 10.0,
+    "MOPS_mM": 70.0,
 }
 CENTER_POINT: Dict[str, float] = {
     factor: round((lo + hi) / 2.0, 4)
@@ -242,14 +249,11 @@ CENTER_POINT: Dict[str, float] = {
 }
 
 MANUAL_MEDIA_PANEL: List[Dict[str, float]] = [
-    {"NaCl_mM": 180.0, "Glycerol_pct": 0.20, "pH": 8.0},
-    {"NaCl_mM": 240.0, "Glycerol_pct": 0.20, "pH": 8.0},
-    {"NaCl_mM": 130.0, "Glycerol_pct": 0.20, "pH": 8.0},
-    {"NaCl_mM": 180.0, "Glycerol_pct": 0.45, "pH": 8.0},
-    {"NaCl_mM": 180.0, "Glycerol_pct": 0.10, "pH": 8.0},
-    {"NaCl_mM": 180.0, "Glycerol_pct": 0.20, "pH": 7.85},
-    {"NaCl_mM": 180.0, "Glycerol_pct": 0.20, "pH": 8.15},
-    {"NaCl_mM": 220.0, "Glycerol_pct": 0.35, "pH": 8.05},
+    {"Yeast_gL": 10.0, "Tryptone_gL": 10.0, "MOPS_mM": 70.0},
+    {"Yeast_gL": 15.0, "Tryptone_gL": 15.0, "MOPS_mM": 100.0},
+    {"Yeast_gL": 5.0, "Tryptone_gL": 5.0, "MOPS_mM": 40.0},
+    {"Yeast_gL": 15.0, "Tryptone_gL": 5.0, "MOPS_mM": 70.0},
+    {"Yeast_gL": 5.0, "Tryptone_gL": 15.0, "MOPS_mM": 70.0},
 ]
 
 SIMULATION_MODE = True
@@ -415,8 +419,10 @@ def ph_adjustment_volume(target_ph: float, base_ph: float = BASE_PH) -> Tuple[st
         lookup_volume = abs(target_ph - base_ph) * BUFFER_CAPACITY_UL_PER_PH_UNIT
 
     volume = round(float(lookup_volume), 1)
-    if volume < MIN_TRANSFER_UL:
+    if volume <= 0.0:
         return "none", 0.0
+    
+    # Bypass MIN_TRANSFER_UL for pH adjustments since they are often very small (e.g., 4.3 uL)
     volume = min(volume, MAX_TRANSFER_UL)
     reagent = "NaOH" if target_ph > base_ph else "HCl"
     return reagent, volume
@@ -522,22 +528,7 @@ def latin_hypercube_sample(n_points: int) -> List[Dict[str, float]]:
     return unique_conditions(conditions)[:n_points]
 
 
-def ph_gradient(n_points: int = 8) -> List[Dict[str, float]]:
-    lo, hi = FACTOR_CONFIG["pH"]
-    ph_values = np.linspace(lo, hi, n_points)
-    return [{**BASELINE_CONDITION, "pH": round(float(ph), 3)} for ph in ph_values]
-
-
-def nacl_gradient(n_points: int = 6) -> List[Dict[str, float]]:
-    lo, hi = FACTOR_CONFIG["NaCl_mM"]
-    values = np.linspace(lo, hi, n_points)
-    return [{**BASELINE_CONDITION, "NaCl_mM": round(float(v), 1)} for v in values]
-
-
-def carbon_gradient(n_points: int = 4) -> List[Dict[str, float]]:
-    lo, hi = FACTOR_CONFIG["Glycerol_pct"]
-    values = np.linspace(lo, hi, n_points)
-    return [{**BASELINE_CONDITION, "Glycerol_pct": round(float(v), 3)} for v in values]
+# Gradient functions removed
 
 
 # ============================================================
@@ -670,7 +661,7 @@ def get_xi(iteration: int, total_iterations: int) -> float:
 
 def baybe_propose_batch(history_df: pd.DataFrame, n_candidates: int, xi: float = 0.01) -> List[Dict[str, float]]:
     aggregated = aggregate_history_for_model(history_df)
-    if len(aggregated) < 8:
+    if len(aggregated) < 4:
         print(f"  [BO] Only {len(aggregated)} clean unique conditions — falling back to LHS.")
         return latin_hypercube_sample(n_candidates)
 
@@ -807,8 +798,14 @@ def validate_transfers(transfers: List[Dict]) -> None:
         if t["src_plate"] not in valid_src_plates:
             raise ValueError(f"Transfer {i}: invalid src_plate '{t['src_plate']}'.")
         vol = t.get("volume", 0)
-        if not (MIN_TRANSFER_UL <= vol <= 1000):
-            raise ValueError(f"Transfer {i}: volume {vol:.2f} uL is out of range [{MIN_TRANSFER_UL}, 1000].")
+        
+        # pH adjustments are allowed to be small (bypass MIN_TRANSFER_UL)
+        if t.get("step") == "B_pH_adjust":
+            if not (0 < vol <= 1000):
+                raise ValueError(f"Transfer {i}: pH adjustment volume {vol:.2f} uL is out of range (0, 1000].")
+        else:
+            if not (MIN_TRANSFER_UL <= vol <= 1000):
+                raise ValueError(f"Transfer {i}: volume {vol:.2f} uL is out of range [{MIN_TRANSFER_UL}, 1000].")
 
 
 # ============================================================
@@ -887,18 +884,6 @@ def build_plate_design(
     if comp["n_media_panel"] > 0:
         for c in MANUAL_MEDIA_PANEL[: comp["n_media_panel"]]:
             designs.append(WellDesign(well="", condition_type="media_panel", composition=c, source_note="manual_media_panel"))
-
-    if comp["n_ph_grad"] > 0:
-        for c in ph_gradient(comp["n_ph_grad"]):
-            designs.append(WellDesign(well="", condition_type="ph_grad", composition=c, source_note="ph_gradient_round1"))
-
-    if comp["n_nacl_grad"] > 0:
-        for c in nacl_gradient(comp["n_nacl_grad"]):
-            designs.append(WellDesign(well="", condition_type="nacl_grad", composition=c, source_note="nacl_gradient_round1"))
-
-    if comp["n_carbon_grad"] > 0:
-        for c in carbon_gradient(comp["n_carbon_grad"]):
-            designs.append(WellDesign(well="", condition_type="carbon_grad", composition=c, source_note="carbon_gradient_round1"))
 
     if comp["n_bo"] > 0:
         if history_df.empty:
@@ -1054,9 +1039,13 @@ def save_model_diagnostics(model: Optional[object], aggregated_df: pd.DataFrame,
 
 # Simulation parameters mapped to quadratic coefficients or offsets
 SIMULATION_CONFIG = {
+    "center_Yeast_gL": 10.0,
+    "coef_Yeast_gL": 0.020000,
+    "center_Tryptone_gL": 10.0,
+    "coef_Tryptone_gL": 0.015000,
     "center_NaCl_mM": 220.0,
     "coef_NaCl_mM": 0.000012,
-    "center_MOPS_mM": 260.0,
+    "center_MOPS_mM": 70.0,
     "coef_MOPS_mM": 0.000010,
     "center_Phosphate_mM": 5.5,
     "coef_Phosphate_mM": 0.030000,
@@ -1094,6 +1083,8 @@ def simulate_od_curves(designs: List[WellDesign], duration_min: int = 120, inter
         c = merge_with_constants(d.composition)
         growth_strength = (
             0.70
+            - SIMULATION_CONFIG["coef_Yeast_gL"] * (c.get("Yeast_gL", 10.0) - SIMULATION_CONFIG["center_Yeast_gL"]) ** 2
+            - SIMULATION_CONFIG["coef_Tryptone_gL"] * (c.get("Tryptone_gL", 10.0) - SIMULATION_CONFIG["center_Tryptone_gL"]) ** 2
             - SIMULATION_CONFIG["coef_NaCl_mM"] * (c["NaCl_mM"] - SIMULATION_CONFIG["center_NaCl_mM"]) ** 2
             - SIMULATION_CONFIG["coef_MOPS_mM"] * (c["MOPS_mM"] - SIMULATION_CONFIG["center_MOPS_mM"]) ** 2
             - SIMULATION_CONFIG["coef_Phosphate_mM"] * (c["Phosphate_mM"] - SIMULATION_CONFIG["center_Phosphate_mM"]) ** 2
@@ -1244,7 +1235,7 @@ def run_closed_loop(n_iterations: int = 2, output_dir: str = "bo_outputs") -> No
     print("Optimizer       : BayBE" if USE_BAYBE else "Optimizer       : GP (BayBE not installed)")
     print(f"Optimized vars  : {FACTOR_NAMES}")
     print(f"Constants       : {CONSTANTS}")
-    print(f"pH range        : {FACTOR_CONFIG['pH']}   base_pH = {BASE_PH}")
+    print(f"pH range        : {CONSTANTS.get('pH', BASE_PH)} (Fixed)   base_pH = {BASE_PH}")
     print(f"Simulation mode : {SIMULATION_MODE}")
     print(f"Composite target: {USE_COMPOSITE_TARGET}")
     print("=" * 72)
