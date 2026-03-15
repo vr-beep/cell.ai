@@ -75,8 +75,8 @@ MEDIA_TARGET_VOLUME_UL = FINAL_WELL_VOLUME_UL - CELL_VOLUME_UL
 
 # Hardware-constrained pipetting range
 MIN_TRANSFER_UL = 10.0
-MAX_TRANSFER_UL = 200.0
-MAX_REAGENT_VOLUME_UL = 200.0
+MAX_TRANSFER_UL = 180.0
+MAX_REAGENT_VOLUME_UL = 180.0
 
 # ── Well layout ───────────────────────────────────────────────────────────────
 INTERIOR_WELLS = [
@@ -149,6 +149,7 @@ DEFAULT_COMPOSITION = ROUND_COMPOSITION[2]
 # ---------------------------------------------------------------------------
 NUMERIC_FACTORS = ["base_media_vol", "yeast_extract", "tryptone", "mops", "na_l_glut", "kh2po4", "glucose"]
 OPTIMIZED_FACTOR_CONFIG: Dict[str, Tuple[float, float]] = {f: (0.0, MAX_TRANSFER_UL) for f in NUMERIC_FACTORS}
+OPTIMIZED_FACTOR_CONFIG["base_media_vol"] = (100.0, MAX_TRANSFER_UL)
 
 try:
     _media_df = pd.read_csv("reagents/base_media_set.csv")
@@ -164,7 +165,7 @@ FACTOR_CONFIG = OPTIMIZED_FACTOR_CONFIG
 
 BASELINE_CONDITION = {
     "base_media": BASE_MEDIA_OPTIONS[0],
-    "base_media_vol": 0.0,
+    "base_media_vol": 100.0,
     "yeast_extract": 0.0,
     "tryptone": 0.0,
     "mops": 0.0,
@@ -308,11 +309,22 @@ def compute_composite_score(mu_max_per_hr: float, endpoint_od: float, auc: float
 # ============================================================
 
 def _enforce_volume_constraint(c: Dict[str, float]) -> Dict[str, float]:
+    for f in NUMERIC_FACTORS:
+        lo, hi = FACTOR_CONFIG[f]
+        if c.get(f, 0.0) < lo:
+            c[f] = lo
+            
     num_sum = sum(c.get(f, 0.0) for f in NUMERIC_FACTORS)
     if num_sum > MAX_REAGENT_VOLUME_UL:
-        scale = MAX_REAGENT_VOLUME_UL / num_sum
-        for f in NUMERIC_FACTORS:
-            c[f] = round(c.get(f, 0.0) * scale, 4)
+        excess = num_sum - MAX_REAGENT_VOLUME_UL
+        slop = sum(c.get(f, 0.0) - FACTOR_CONFIG[f][0] for f in NUMERIC_FACTORS)
+        
+        if slop > 0 and excess <= slop + 1e-6:
+            scale = (slop - excess) / slop
+            for f in NUMERIC_FACTORS:
+                lo = FACTOR_CONFIG[f][0]
+                if c[f] > lo:
+                    c[f] = round(lo + (c[f] - lo) * scale, 4)
     return c
 
 def is_valid_condition(c: Dict[str, float]) -> bool:
@@ -850,7 +862,9 @@ def load_historical_plate_data(data_dir: str = "data") -> pd.DataFrame:
                 c["target_std"] = 0.05
                 
             for f in NUMERIC_FACTORS:
-                c[f] = float(row.get(f, 0.0))
+                val = float(row.get(f, 0.0))
+                lo, hi = FACTOR_CONFIG[f]
+                c[f] = max(lo, min(hi, val))
             
             c["condition_type"] = "historical"
             all_rows.append(c)
