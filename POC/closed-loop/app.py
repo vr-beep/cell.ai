@@ -23,10 +23,18 @@ import streamlit as st
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-DATA_DIR = Path(__file__).parent / "data"
+DATA_DIR = Path(__file__).parent / "data" / "data_by_round"
 BO_DIR = Path(__file__).parent / "bo_outputs"
 WORKFLOWS_DIR = Path(__file__).parent / "workflows"
-STATE_FILE = DATA_DIR / "orchestrator_state.json"
+STATE_FILE = Path(__file__).parent / "data" / "orchestrator_state.json"
+LOG_FILE = Path(__file__).parent / "data" / "orchestrator_log.json"
+
+# Human-readable labels for round selectbox
+ROUND_LABELS = {
+    "seed_round": "Seed Round",
+    "round1": "Round 1",
+    "round2": "Round 2",
+}
 
 # 96-well plate layout
 ROWS = list("ABCDEFGH")
@@ -104,6 +112,16 @@ def load_bo_proposals() -> pd.DataFrame | None:
 def load_orchestrator_state() -> dict | None:
     if STATE_FILE.exists():
         return json.loads(STATE_FILE.read_text())
+    return None
+
+
+def _load_log() -> dict | None:
+    """Load orchestrator live log (separate lightweight file)."""
+    if LOG_FILE.exists():
+        try:
+            return json.loads(LOG_FILE.read_text())
+        except (json.JSONDecodeError, OSError):
+            return None
     return None
 
 
@@ -308,13 +326,13 @@ def sidebar():
 
     plates = discover_plates()
     if not plates:
-        st.sidebar.warning("No plate data found in data/")
+        st.sidebar.warning("No plate data found in data/data_by_round/")
         return None
 
     plate_id = st.sidebar.selectbox(
-        "Select Plate",
+        "Select Round",
         plates,
-        format_func=lambda x: f"{x[:12]}..." if len(x) > 12 else x,
+        format_func=lambda x: ROUND_LABELS.get(x, x),
     )
 
     st.sidebar.divider()
@@ -348,12 +366,13 @@ def main():
     plate_id = sidebar()
     if plate_id is None:
         st.title("Cell.ai")
-        st.info("No plate data found. Place CSV files in the `data/` directory.")
+        st.info("No plate data found. Place CSV files in the `data/data_by_round/` directory.")
         return
 
     # Header
     st.title("🧫 Cell.ai — Media Optimization Dashboard")
-    st.caption(f"Plate: `{plate_id}` | Organism: *V. natriegens* | Target: maximize growth rate")
+    round_label = ROUND_LABELS.get(plate_id, plate_id)
+    st.caption(f"Round: **{round_label}** | Organism: *V. natriegens* | Target: maximize growth rate")
 
     # Load all data
     growth = load_growth(plate_id)
@@ -430,26 +449,125 @@ def main():
             st.info("No BayBE proposals yet. Run optimization first.")
             st.code("python scripts/orchestrator.py --plate-id <PLATE_ID>")
 
-    # --- Tab 6: Orchestrator log ---
+    # --- Tab 6: Orchestrator live log ---
     with tab_orchestrator:
-        state = load_orchestrator_state()
-        if state:
-            render_orchestrator_log(state)
-        else:
-            st.info("No orchestrator state. Start the loop to see activity here.")
+        @st.fragment(run_every="3s")
+        def live_orchestrator_log():
+            placeholder = st.empty()
+            with placeholder.container():
+                log_data = _load_log()
+                if log_data is None:
+                    st.info("No orchestrator activity. Start the loop to see live updates.")
+                    st.code("SIMULATION_MODE=1 python scripts/orchestrator.py --plate-id <PLATE_ID> --auto-approve")
+                    return
 
-        st.divider()
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if st.button("🔄 Refresh", use_container_width=True):
-                st.cache_data.clear()
-                st.rerun()
-        with col2:
-            st.button("✅ Approve Next Step", use_container_width=True, disabled=True,
-                       help="Approval is handled in the terminal when orchestrator is running")
-        with col3:
-            st.button("🛑 Stop Orchestrator", use_container_width=True, disabled=True,
-                       help="Kill the orchestrator process manually (Ctrl+C)")
+                status = log_data.get("status", "unknown")
+                log_entries = log_data.get("log", [])
+                is_complete = status == "complete"
+
+                # Pipeline steps in order (for progress tracking)
+                pipeline = [
+                    ("fetch_results", "📥", "Fetch Results"),
+                    ("analyze_results", "📊", "Analyze Growth"),
+                    ("baybe_propose", "🧠", "BayBE Optimize"),
+                    ("compile_protocol", "⚗️", "Compile Protocol"),
+                    ("monomer_submit", "🤖", "Submit to Robot"),
+                ]
+
+                # Determine which steps are done
+                done_steps = {e["step"].replace("_done", "") for e in log_entries}
+
+                # Status header
+                if is_complete:
+                    status_label = "Optimization round complete"
+                    st_state = "complete"
+                else:
+                    # Find current active step
+                    last_entry = log_entries[-1] if log_entries else {}
+                    step_name = last_entry.get("step", "").replace("_done", "")
+                    status_label = last_entry.get("label", step_name)
+                    st_state = "running"
+
+                with st.status(status_label, state=st_state, expanded=True):
+                    # Progress bar
+                    n_done = sum(1 for s, _, _ in pipeline if s in done_steps)
+                    st.progress(n_done / len(pipeline) if pipeline else 0)
+
+                    # Render entries in order — shows thinking + steps interleaved
+                    rendered_steps = set()
+                    for entry in log_entries:
+                        step = entry.get("step", "")
+
+                        # Thinking block from Claude
+                        if step == "thinking":
+                            st.markdown(f"> 💭 *{entry.get('detail', '')}*")
+                            continue
+
+                        # Skip init
+                        if step == "init":
+                            continue
+
+                        # Done entry — update the previous step with result
+                        if step.endswith("_done"):
+                            detail = entry.get("detail", "")
+                            if detail:
+                                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ **{detail}**")
+                            continue
+
+                        # Tool call step
+                        base_step = step.replace("_done", "")
+                        if base_step not in rendered_steps:
+                            rendered_steps.add(base_step)
+                            # Find matching pipeline entry for icon
+                            icon = "▶"
+                            label = entry.get("label", step)
+                            for p_key, p_icon, p_label in pipeline:
+                                if p_key == base_step:
+                                    icon = p_icon
+                                    label = p_label
+                                    break
+                            if base_step in done_steps:
+                                st.markdown(f"✅ **{label}**")
+                            else:
+                                st.markdown(f"⏳ **{label}** ...")
+
+                    # Show remaining pipeline steps not yet reached
+                    if not is_complete:
+                        for step_key, icon, label in pipeline:
+                            if step_key not in rendered_steps and step_key not in done_steps:
+                                st.markdown(f"⬜ {label}")
+
+                # Summary below the status widget
+                if is_complete:
+                    summary = log_data.get("summary", "")
+                    if summary:
+                        st.divider()
+                        st.subheader("Agent Decision")
+                        st.markdown(summary)
+
+                    # Timing info
+                    if len(log_entries) >= 2:
+                        t0 = log_entries[0].get("ts", "")
+                        t1 = log_entries[-1].get("ts", "")
+                        if t0 and t1:
+                            from datetime import datetime as dt
+                            try:
+                                start = dt.fromisoformat(t0)
+                                end = dt.fromisoformat(t1)
+                                elapsed = (end - start).total_seconds()
+                                st.caption(f"Completed in {elapsed:.0f}s")
+                            except ValueError:
+                                pass
+
+        live_orchestrator_log()
+
+        # Keep the old detailed log in an expander
+        with st.expander("Raw message log", expanded=False):
+            state = load_orchestrator_state()
+            if state:
+                render_orchestrator_log(state)
+            else:
+                st.caption("No state file.")
 
 
 if __name__ == "__main__":
