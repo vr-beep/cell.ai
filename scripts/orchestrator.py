@@ -36,14 +36,24 @@ SYSTEM_PROMPT = """You are a closed-loop media optimization agent for V. natrieg
 You have tools to fetch results, analyze data, consult Elnora AI for biological guidance,
 run BayBE optimization, validate conditions, compile protocols, and submit to the robot.
 
-ROUTING RULE:
-- If fewer than 8 unique conditions have been tested: use elnora_design to propose next conditions
-- If 8 or more unique conditions: use baybe_propose, then elnora_validate
+IMPORTANT FILE PATHS:
+- Growth data CSVs are at: data/<plate_id>_growth.csv (e.g. data/PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ_growth.csv)
+- Always use the plate_id returned by fetch_results to construct the CSV path for analyze_results
 
-STOP CONDITION: If 95% confidence intervals of best conditions overlap between rounds, stop.
+WORKFLOW - follow these steps in order:
+1. Call fetch_results with the plate_id to get growth data
+2. Call analyze_results with the FULL path "data/{plate_id}_growth.csv" and previous_best_rate
+3. ROUTING: If n_conditions >= 8, call baybe_propose. If < 8, call elnora_design.
+4. Call compile_protocol with the proposed conditions and target wells ["B2","B3","B4","B5","B6","B7","B8","B9","B10","B11"]
+5. Call monomer_submit with the transfer_array
+6. Call check_convergence to decide whether to stop
 
-Always validate proposed conditions against precipitation rules before compiling.
-Use check_precipitation on proposed conditions to detect known incompatibilities."""
+If elnora_design fails (CLI error), fall back to baybe_propose.
+If baybe_propose fails, fall back to elnora_design.
+
+STOP CONDITION: If check_convergence returns converged=true, stop the loop.
+
+Wells to use: B2-B11 (10 wells, inner wells only to avoid edge effects)."""
 
 
 def save_state(messages: list, round_info: dict | None = None) -> None:
@@ -259,15 +269,20 @@ def execute_tool(name: str, input_data: dict) -> str:
     from tools.monomer_client import fetch_results, monomer_submit
     from tools.validators import check_convergence, check_precipitation
 
-    # Fix #1: Human checkpoint before robot submission
+    auto_approve = os.environ.get("AUTO_APPROVE", "0") == "1"
+
+    # Human checkpoint before robot submission
     if name == "monomer_submit":
         print(f"\n⚠️  ROBOT SUBMISSION REQUESTED")
         print(f"  Plate: {input_data.get('plate_barcode')}")
         print(f"  Round: {input_data.get('round_label')}")
         print(f"  Wells: {input_data.get('monitoring_wells')}")
-        confirm = input("  Approve? [y/N]: ").strip().lower()
-        if confirm != "y":
-            return json.dumps({"error": "User rejected robot submission"})
+        if not auto_approve:
+            confirm = input("  Approve? [y/N]: ").strip().lower()
+            if confirm != "y":
+                return json.dumps({"error": "User rejected robot submission"})
+        else:
+            print("  Auto-approved.")
 
     if name == "compile_protocol":
         print(f"\n⚠️  COMPILE PROTOCOL REQUESTED")
@@ -279,9 +294,12 @@ def execute_tool(name: str, input_data: dict) -> str:
                 print(f"  Conditions: {len(parsed)} entries")
             except json.JSONDecodeError:
                 print(f"  Conditions: (unparseable)")
-        confirm = input("  Approve? [y/N]: ").strip().lower()
-        if confirm != "y":
-            return json.dumps({"error": "User rejected protocol compilation"})
+        if not auto_approve:
+            confirm = input("  Approve? [y/N]: ").strip().lower()
+            if confirm != "y":
+                return json.dumps({"error": "User rejected protocol compilation"})
+        else:
+            print("  Auto-approved.")
 
     # Fix #6: check_precipitation tool dispatch
     if name == "check_precipitation":
@@ -400,5 +418,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Closed-loop media optimization orchestrator")
     parser.add_argument("--plate-id", default=None, help="Initial plate ID to fetch results from")
     parser.add_argument("--resume", action="store_true", help="Resume from saved state")
+    parser.add_argument("--auto-approve", action="store_true", help="Skip human checkpoints (auto-approve all)")
     args = parser.parse_args()
+    if args.auto_approve:
+        os.environ["AUTO_APPROVE"] = "1"
     run_loop(initial_plate_id=args.plate_id, resume=args.resume)
