@@ -330,32 +330,44 @@ def _num(val):
         return val
 
 
-def _logistic(t: np.ndarray, K: float, r: float, t0: float) -> np.ndarray:
-    return K / (1.0 + np.exp(-r * (t - t0)))
+def _logistic(t: np.ndarray, A: float, K: float, r: float, t0: float) -> np.ndarray:
+    """4-parameter logistic (Richards) growth model.
+
+    y = A + (K - A) / (1 + exp(-r * (t - t0)))
+
+    A  — lower asymptote: baseline OD from the inoculum at t=0
+    K  — upper asymptote: carrying capacity (maximum OD)
+    r  — growth rate at the inflection point (hr⁻¹), reported as growth_rate_per_hr
+    t0 — inflection time (hr), reported as t_inflection_hours
+    """
+    return A + (K - A) / (1.0 + np.exp(-r * (t - t0)))
 
 
 def _fit_logistic(times_hr: list[float], od_values: list[float]):
-    """Fit logistic S-curve to a single well's time series.
+    """Fit a 4-parameter logistic S-curve to a single well's time series.
 
-    Returns (K, r, t0, r2, rmse). All None when fitting requires > 2 points
-    or curve_fit fails to converge.
+    Returns (K, r, t0, r2, rmse). All None when fewer than 4 points are
+    available or curve_fit fails to converge.
     """
     t = np.array(times_hr, dtype=float)
     y = np.array(od_values, dtype=float)
 
-    if len(t) < 3:
+    if len(t) < 4:
         return None, None, None, None, None
 
-    K0 = float(np.max(y)) * 1.1
-    t0_0 = float(t[int(np.argmin(np.abs(y - K0 / 2)))])
+    A0  = float(np.min(y))                              # seed from observed minimum
+    K0  = float(np.max(y)) * 1.1                        # seed slightly above observed max
+    mid = A0 + (K0 - A0) / 2.0
+    t0_0 = float(t[int(np.argmin(np.abs(y - mid)))])   # time closest to midpoint
     try:
         popt, _ = curve_fit(
             _logistic, t, y,
-            p0=[K0, 1.0, t0_0],
-            bounds=([0.0, 0.0, -np.inf], [np.inf, np.inf, np.inf]),
+            p0=[A0, K0, 1.0, t0_0],
+            bounds=([0.0, 0.0, 0.0, -np.inf], [np.inf, np.inf, np.inf, np.inf]),
             maxfev=5000,
         )
-        K, r, t0 = float(popt[0]), float(popt[1]), float(popt[2])
+        A, K, r, t0 = (float(popt[0]), float(popt[1]),
+                       float(popt[2]), float(popt[3]))
         y_pred = _logistic(t, *popt)
         ss_res = float(np.sum((y - y_pred) ** 2))
         ss_tot = float(np.sum((y - float(np.mean(y))) ** 2))

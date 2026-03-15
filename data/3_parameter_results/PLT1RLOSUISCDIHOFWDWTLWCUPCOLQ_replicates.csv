@@ -1,0 +1,11 @@
+plate_id,plate_barcode,condition_id,reagent_name,n_replicates,mean_growth_rate_per_hr,median_growth_rate_per_hr,variance_growth_rate_per_hr,mean_max_absorbance_OD600,mean_max_cell_concentration_cells_per_mL
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,HB-1_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Water, Yeast Extract",1,1.854566,1.854566,,0.5393,539300000
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,HB-2_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Water, Yeast Extract",1,1.776152,1.776152,,0.5567,556700000
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,HB-3_1,"High Buffer Defined, Na L-Glutamate, Tryptone, Water, Yeast Extract",1,1.613885,1.613885,,0.5875,587500000
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,LB-1_1,"Glucose, KH2PO4 (monobasic), LBv2, MOPS (pH 7), Water",1,1.1785,1.1785,,0.3966,396600000
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,LB-2_1,"Glucose, KH2PO4 (monobasic), LBv2, MOPS (pH 7), Water",1,1.395155,1.395155,,0.479,479000000
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,LB-3_1,"Glucose, KH2PO4 (monobasic), LBv2, MOPS (pH 7), Water",1,1.253029,1.253029,,0.4541,454100000
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,SD-1_1,"MOPS (pH 7), Semi-Defined, Tryptone, Yeast Extract",1,1.903158,1.903158,,0.5049,504900000
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,SD-2_1,"MOPS (pH 7), Semi-Defined, Tryptone, Water, Yeast Extract",1,1.766912,1.766912,,0.5339,533900000
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,SD-3_1,"MOPS (pH 7), Semi-Defined, Tryptone, Yeast Extract",1,1.64677,1.64677,,0.5952,595200000
+PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ,CellAI Experiment Plate,baseline_1,Novel Bio Cyclone,1,1.642662,1.642662,,0.3567,356700000
