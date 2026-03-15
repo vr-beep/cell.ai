@@ -144,7 +144,7 @@ def plate_heatmap(growth_df: pd.DataFrame, metric: str = "growth_rate_per_hr") -
         c = int(m.group(2)) - 1
         val = row.get(metric, np.nan)
         grid[r][c] = val
-        cond = str(row.get("condition_id", ""))
+        cond = str(row.get("condition", ""))
         labels[r][c] = f"{well}<br>{cond}<br>{val:.3f}" if pd.notna(val) else well
 
     colorscale = "YlGn" if "growth" in metric else "Blues"
@@ -174,9 +174,9 @@ def growth_curves(ts_df: pd.DataFrame, growth_df: pd.DataFrame | None = None) ->
     """Plot OD600 timeseries per well, colored by condition."""
     # Merge condition info if available
     if growth_df is not None:
-        well_cond = growth_df[["well", "condition_id"]].drop_duplicates()
+        well_cond = growth_df[["well", "condition"]].drop_duplicates()
         ts_df = ts_df.merge(well_cond, on="well", how="left")
-        color_col = "condition_id"
+        color_col = "condition"
     else:
         ts_df = ts_df.copy()
         color_col = "well"
@@ -199,7 +199,7 @@ def growth_curves(ts_df: pd.DataFrame, growth_df: pd.DataFrame | None = None) ->
 # ---------------------------------------------------------------------------
 def ranking_chart(growth_df: pd.DataFrame) -> go.Figure:
     ranked = growth_df.sort_values("growth_rate_per_hr", ascending=True).copy()
-    ranked["label"] = ranked["well"] + " — " + ranked["condition_id"].astype(str)
+    ranked["label"] = ranked["well"] + " — " + ranked["condition"].astype(str)
 
     fig = px.bar(
         ranked,
@@ -343,9 +343,9 @@ def sidebar():
     if growth is not None:
         best = growth.loc[growth["growth_rate_per_hr"].idxmax()]
         st.sidebar.metric("Best Growth Rate", f"{best['growth_rate_per_hr']:.3f} /hr")
-        st.sidebar.metric("Best Condition", str(best["condition_id"]))
+        st.sidebar.metric("Best Condition", str(best["condition"]))
         st.sidebar.metric("Wells Measured", len(growth))
-        st.sidebar.metric("Max OD600", f"{growth['max_absorbance_OD600'].max():.3f}")
+        st.sidebar.metric("Max OD600", f"{growth['K_asymptote'].max():.3f}")
 
     st.sidebar.divider()
     st.sidebar.subheader("Orchestrator")
@@ -399,7 +399,7 @@ def main():
                 fig = plate_heatmap(growth, "growth_rate_per_hr")
                 st.plotly_chart(fig, use_container_width=True)
             with col2:
-                fig = plate_heatmap(growth, "max_absorbance_OD600")
+                fig = plate_heatmap(growth, "K_asymptote")
                 st.plotly_chart(fig, use_container_width=True)
 
             with st.expander("Raw growth data"):
