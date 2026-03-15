@@ -8,6 +8,30 @@ PRECIPITATION_RULES = [
     {"pair": ("FeSO4", "K2HPO4"), "action": "NEVER", "fix": "Use KH2PO4 at low iron"},
 ]
 
+def check_precipitation(conditions: list[dict]) -> dict:
+    """Check conditions for known precipitation risks."""
+    warnings = []
+    for i, cond in enumerate(conditions):
+        components = set(
+            k for k, v in cond.items()
+            if k not in ("base_media", "base_media_vol", "condition", "water", "cells")
+            and v and float(v) > 0
+        )
+        base = cond.get("base_media", "")
+        for rule in PRECIPITATION_RULES:
+            a, b = rule["pair"]
+            a_low = a.lower().replace(" ", "_")
+            b_low = b.lower().replace(" ", "_")
+            if (a_low in components or a in base) and (b_low in components or b in base):
+                warnings.append({
+                    "condition": i,
+                    "rule": rule["action"],
+                    "fix": rule["fix"],
+                    "pair": list(rule["pair"]),
+                })
+    return {"n_warnings": len(warnings), "warnings": warnings}
+
+
 def check_convergence(current_best_rate: float, current_best_se: float, previous_best_rate: float, previous_best_se: float) -> dict:
     ci_current = (current_best_rate - 1.96 * current_best_se, current_best_rate + 1.96 * current_best_se)
     ci_previous = (previous_best_rate - 1.96 * previous_best_se, previous_best_rate + 1.96 * previous_best_se)
