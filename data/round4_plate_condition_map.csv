@@ -1,0 +1,12 @@
+well,condition,base_media,base_media_vol,yeast_extract,tryptone,mops,na_l_glut,kh2po4,glucose,mgso4,trace_metals,glycerol,feso4,nacit,water,cells,total
+F2,HB-1_BayBE,High Buffer Defined Media,110,24.7,15.5,0,6.8,0,0,0,0,0,0,0,23.0,20,200
+F3,HB-2_BayBE,High Buffer Defined Media,110,15.5,12.6,0,5.3,0,0,0,0,0,0,0,36.6,20,200
+F4,HB-3_BayBE,High Buffer Defined Media,110,10.2,13.0,0,6.5,0,0,0,0,0,0,0,40.3,20,200
+F5,SD-1_BayBE,Semi-Defined Media,131.4,14.6,26.8,7.2,0,0,0,0,0,0,0,0,0,20,200
+F6,SD-2_BayBE,Semi-Defined Media,125.4,10.0,30.0,14.6,0,0,0,0,0,0,0,0,0,20,200
+F7,HB-Opt1_Elnora,High Buffer Defined Media,110,15,30,0,12,0,0,0,0,0,0,0,13,20,200
+F8,HB-Rich_Elnora,High Buffer Defined Media,100,30,40,0,10,0,0,0,0,0,0,0,0,20,200
+F9,HB-CarbonMix_Elnora,High Buffer Defined Media,110,25,25,0,0,0,10,0,0,10,0,0,0,20,200
+F10,HB-Phos_Elnora,High Buffer Defined Media,110,20,30,0,0,5,0,0,0,0,0,0,15,20,200
+F11,SD-CarbonMix_Elnora,Semi-Defined Media,120,20,20,0,0,0,10,0,0,10,0,0,0,20,200
+D8,NB-CTL,Novel Bio NBxCyclone Media,180,0,0,0,0,0,0,0,0,0,0,0,0,20,200

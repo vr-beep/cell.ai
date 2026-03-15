@@ -344,31 +344,35 @@ def _logistic(t: np.ndarray, A: float, K: float, r: float, t0: float) -> np.ndar
 
 
 def _fit_logistic(times_hr: list[float], od_values: list[float]):
-    """Fit a 4-parameter logistic S-curve to a single well's time series.
+    """Fit a logistic S-curve to a single well's time series.
 
-    Returns (K, r, t0, r2, rmse). All None when fewer than 4 points are
+    The lower asymptote A is fixed to the first observed OD value (inoculum
+    baseline) and is not a free parameter. curve_fit optimises K, r, t0.
+
+    Returns (K, r, t0, r2, rmse). All None when fewer than 3 points are
     available or curve_fit fails to converge.
     """
     t = np.array(times_hr, dtype=float)
     y = np.array(od_values, dtype=float)
 
-    if len(t) < 4:
+    if len(t) < 3:
         return None, None, None, None, None
 
-    A0  = float(np.min(y))                              # seed from observed minimum
-    K0  = float(np.max(y)) * 1.1                        # seed slightly above observed max
-    mid = A0 + (K0 - A0) / 2.0
-    t0_0 = float(t[int(np.argmin(np.abs(y - mid)))])   # time closest to midpoint
+    A = float(y[0])  # fixed baseline from first observation
+    model = lambda t, K, r, t0: _logistic(t, A, K, r, t0)
+
+    K0   = float(np.max(y)) * 1.1
+    mid  = A + (K0 - A) / 2.0
+    t0_0 = float(t[int(np.argmin(np.abs(y - mid)))])
     try:
         popt, _ = curve_fit(
-            _logistic, t, y,
-            p0=[A0, K0, 1.0, t0_0],
-            bounds=([0.0, 0.0, 0.0, -np.inf], [np.inf, np.inf, np.inf, np.inf]),
+            model, t, y,
+            p0=[K0, 1.0, t0_0],
+            bounds=([0.0, 0.0, -np.inf], [np.inf, np.inf, np.inf]),
             maxfev=5000,
         )
-        A, K, r, t0 = (float(popt[0]), float(popt[1]),
-                       float(popt[2]), float(popt[3]))
-        y_pred = _logistic(t, *popt)
+        K, r, t0 = float(popt[0]), float(popt[1]), float(popt[2])
+        y_pred = model(t, *popt)
         ss_res = float(np.sum((y - y_pred) ** 2))
         ss_tot = float(np.sum((y - float(np.mean(y))) ** 2))
         r2 = round(1.0 - ss_res / ss_tot, 6) if ss_tot > 0 else None
