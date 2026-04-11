@@ -1,0 +1,25 @@
+Well,Reagent,Stock Concentration,Volume Needed (uL),Note
+A1,Semi-Defined,neat,120,R1+R2
+A2,High Buffer Defined,neat,459,R1+R2
+A3,LBv2,neat,0,Not needed R2
+A4,Novel Bio Cyclone,neat,0,Not needed R2
+A5,,empty,0,
+A6,,empty,0,
+B1,Yeast Extract,100 mg/mL,82,R1+R2
+B2,Tryptone,100 mg/mL,154,R1+R2
+B3,MOPS (pH 7),1M,24,R1+R2
+B4,Glycerol,10%,36,New for R2
+B5,Water,sterile,80,New for R2
+B6,,empty,0,
+C1,Defined-Glycerol,neat,120,New for R2
+C2,MgSO4,0.5M (diluted from 1M),4,New for R2
+C3,Na L-Glutamate,1M,45,R1+R2
+C4,Trace metals,500X (diluted from 1000X),4,New for R2
+C5,,empty,0,
+C6,,empty,0,
+D1,FeSO4,0.5M (diluted from 1M),4,New for R2
+D2,Na Citrate,0.5M (diluted from 1M),4,New for R2
+D3,,empty,0,
+D4,,empty,0,
+D5,,empty,0,
+D6,,empty,0,
