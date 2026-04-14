@@ -1,0 +1,25 @@
+Component,Stock Solution Concentration,Link to Product,SDS,Checkbox
+Tryptone (Vegetable),100 mg/mL,https://www.fishersci.com/shop/products/tryptone-vegetable-for-micro/501861615,https://www.sigmaaldrich.com/US/en/sds/sial/16922?userType=anonymous,YES
+Yeast Extract,100 mg/mL,https://www.fishersci.com/shop/products/gibco-autolyzed-yeast-extract-15-solution/18180059,https://documents.thermofisher.com/TFS-Assets/LSG/SDS/18180059_MTR-NALT_EN.pdf,YES
+Sodium Chloride,5 M,https://www.fishersci.com/shop/products/sodium-chloride-crystalline-certified-acs-fisher-chemical-6/S271500,https://www.fishersci.com/store/msds?partNumber=S640500&productDescription=SODIUM+CHLORIDE+USP%2FFCC+500G&vendorId=VN00033897&countryCode=US&language=en,YES
+Glucose,100 mg/mL,https://www.fishersci.com/shop/products/gibco-glucose-solution/A2494001,https://documents.thermofisher.com/TFS-Assets/LSG/SDS/A2494001_MTR-NALT_EN.pdf,YES
+Glycerol,10% in Sterile H2O,https://www.fishersci.com/shop/products/glycerol-bioreagent-suitable/501845872,https://www.sigmaaldrich.com/US/en/sds/sigma/g2025?userType=anonymous,YES
+MOPS (pH adjusted to 7),1 M,https://www.fishersci.com/shop/products/mops-fine-white-crystals-molecular-biology-fisher-bioreagents/BP308500,https://www.fishersci.com/store/msds?partNumber=BP308500&productDescription=MOPS+500G&vendorId=VN00033897&countryCode=US&language=en,YES
+Potassium Phosphate (dibasic),1 M,https://www.fishersci.com/shop/products/potassium-phosphate-dibasic-fine-white-crystalline-powder-fisher-bioreagents/BP363500,https://www.fishersci.com/store/msds?partNumber=BP363500&productDescription=POT+PHOSPHATE+DIBASIC+500G&vendorId=VN00033897&countryCode=US&language=en,YES
+Potassium Phosphate (monobasic),1 M,https://www.fishersci.com/shop/products/potassium-phosphate-monobasic-white-crystals-fisher-bioreagents-2/BP362500,https://www.fishersci.com/store/msds?partNumber=BP362500&productDescription=POT+PHOSPHATE+MONOBASIC+500G&vendorId=VN00033897&countryCode=US&language=en,YES
+Magnesium Sulfate,1 M,https://www.fishersci.com/shop/products/magnesium-sulfate-anhydrous-powder-certified-fisher-chemical-3/M65500,https://www.fishersci.com/store/msds?partNumber=AA3333736&productDescription=MAG+SFAT+ANHYD+MIN+500G&vendorId=VN00024248&countryCode=US&language=en,YES
+Calcium Chloride,1 M,https://www.fishersci.com/shop/products/calcium-chloride-dihydrate-certified-acs-fisher-chemical-2/C79500,https://www.fishersci.com/store/msds?partNumber=C79500&productDescription=CAL+CHLORIDE+DIHYD+CR+ACS+500G&vendorId=VN00033897&countryCode=US&language=en,YES
+Ammonium Sulfate,1 M,https://www.fishersci.com/shop/products/ammonium-sulfate-fisher-bioreagents-2/BP212R1,https://www.fishersci.com/store/msds?partNumber=BP212R1&productDescription=AMMONIUM+SULFATE+1KG&vendorId=VN00033897&countryCode=US&language=en,YES
+Potassium Chloride,2 M,https://www.fishersci.com/shop/products/potassium-chloride-crystalline-certified-acs-fisher-chemical-4/P217500,https://www.fishersci.com/store/msds?partNumber=P217500&productDescription=POT+CHLORIDE+ACS+500G&vendorId=VN00033897&countryCode=US&language=en,YES
+Trace metals solution,1000X,https://www.teknova.com/en/products/product-page.html/t1001-1000x-trace-metals-mixture-1000ml.html,https://teknova-sds.s3.us-west-1.amazonaws.com/T1001.pdf,YES
+Sodium Citrate,1 M,https://www.fishersci.com/shop/products/sodium-citrate-dihydrate-granular-certified-fisher-chemical-6/S279500,,NO
+Iron(II) sulfate heptahydrate ACS 99+%,1 M,https://www.fishersci.com/shop/products/iron-ii-sulfate-heptahydrate-acs-99-thermo-scientific/AA1449830,,NO
+Sodium L-Glutamate Monohydrate 99.0+% TCI,1 M,https://www.fishersci.com/shop/products/sodium-l-glutamate-monohydrate-tci-america-2/G0188500G,,NO
+HCl,12 N,https://www.sigmaaldrich.com/US/en/product/mm/hx0603,https://www.sigmaaldrich.com/US/en/sds/mm/hx0603?userType=anonymous,YES
+NaOH,10 N,https://www.fishersci.com/shop/products/sodium-hydroxide-solution-10n-certified-fisher-chemical-3/SS2551,https://www.fishersci.com/store/msds?partNumber=SS2551&productDescription=SODIUM+HYDROX+SOL+10N+CERT+1L&vendorId=VN00033897&countryCode=US&language=en,YES
+Novel Bio NBxCyclone Media,N/A,https://www.biorxiv.org/content/10.64898/2026.02.11.705132v1.full,,YES
+Prepared LBv2 Media,,,, NO
+High Buffer Defined Media,,,,NO
+Semi-Defined Media,,,,NO
+Defined-Minimal Media,,,,NO
+Defined-Glycerol,,,,NO
