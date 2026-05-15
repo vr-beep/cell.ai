@@ -34,3 +34,8 @@ doc/scrapbook/*.wav
 
 # Credentials
 scripts/token.json
+
+# Third-party clones (restore via fresh git clone)
+POC/autoresearch/
+POC/bio-autoresearch/
+monomer-bio-hackathon/
