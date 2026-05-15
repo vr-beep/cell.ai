@@ -1,41 +1,99 @@
-"""Elnora AI client — wraps elnora CLI for experiment design and validation."""
+"""Elnora AI client — wraps elnora CLI for experiment design and validation.
+
+Pattern ported from bio-autoresearch/autoresearch.py (proven working).
+Key principle: simple polling for any assistant content, no metadata parsing.
+"""
 from __future__ import annotations
 
 import json
 import subprocess
+import time
 
 ELNORA_PROJECT_ID = "82d10329-f194-44e8-be72-e2a65bb94a7c"
 ELNORA_CLI = "elnora"
 
 
-def _run_elnora(args: list[str], timeout: int = 180) -> str:
-    result = subprocess.run(
-        [ELNORA_CLI] + args, capture_output=True, text=True, timeout=timeout,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"elnora CLI error: {result.stderr}")
-    return result.stdout
+def _parse_elnora_json(raw: str) -> dict:
+    """Parse elnora CLI output which may have a warning JSON before the actual data."""
+    decoder = json.JSONDecoder()
+    pos = 0
+    last_obj = None
+    while pos < len(raw):
+        raw_stripped = raw[pos:].lstrip()
+        if not raw_stripped:
+            break
+        try:
+            obj, end = decoder.raw_decode(raw_stripped)
+            last_obj = obj
+            pos += len(raw) - len(raw_stripped) - pos + end
+        except json.JSONDecodeError:
+            break
+    return last_obj or {}
 
 
-def _create_task(title: str, message: str) -> dict:
-    output = _run_elnora([
-        "tasks", "create",
-        "--project", ELNORA_PROJECT_ID,
-        "--title", title,
-        "--message", message,
-    ])
-    return json.loads(output)
+def query_elnora(question: str, title: str = "cell-ai", timeout: int = 150, poll: int = 5) -> str | None:
+    """Send a question to Elnora AI and wait for response.
 
+    Mirrors the proven bio-autoresearch pattern:
+    1. Create task with message
+    2. Poll for ANY assistant content (no metadata parsing)
+    3. Return content or None on timeout/error
+    """
+    print(f"    [elnora] Creating task: {title}", flush=True)
+    try:
+        result = subprocess.run(
+            [ELNORA_CLI, "tasks", "create",
+             "--project", ELNORA_PROJECT_ID,
+             "--title", title,
+             "--message", question],
+            capture_output=True, text=True, timeout=60,
+        )
+        if result.returncode != 0:
+            print(f"    [elnora] CLI error: {result.stderr.strip()}", flush=True)
+            return None
 
-def _send_message(task_id: str, message: str) -> dict:
-    output = _run_elnora(["tasks", "send", task_id, "--message", message])
-    return json.loads(output)
+        task_data = _parse_elnora_json(result.stdout)
+        task_id = task_data.get("id", "")
+        if not task_id:
+            print(f"    [elnora] No task ID in response", flush=True)
+            return None
+        print(f"    [elnora] Task created: {task_id}", flush=True)
 
+        # Poll for response — check both content and completed status
+        print(f"    [elnora] Polling for reply (timeout={timeout}s, interval={poll}s)", flush=True)
+        for elapsed in range(0, timeout, poll):
+            msg_result = subprocess.run(
+                [ELNORA_CLI, "tasks", "messages", task_id],
+                capture_output=True, text=True, timeout=30,
+            )
+            if msg_result.returncode == 0:
+                data = _parse_elnora_json(msg_result.stdout)
+                for msg in data.get("items", []):
+                    if msg.get("role") == "assistant":
+                        content = msg.get("content", "").strip()
+                        # Check if Elnora marked the reply as completed
+                        meta = msg.get("metadata") or ""
+                        completed = False
+                        if isinstance(meta, str) and meta.strip():
+                            try:
+                                completed = json.loads(meta).get("status") == "completed"
+                            except (json.JSONDecodeError, AttributeError):
+                                pass
+                        if content:
+                            preview = (content[:100] + "...") if len(content) > 100 else content
+                            print(f"    [elnora] Got response ({len(content)} chars): {preview}", flush=True)
+                            return content
+                        if completed:
+                            print(f"    [elnora] Completed with empty content — returning None", flush=True)
+                            return None
+            print(f"    [elnora] Poll at {elapsed}s — no reply yet", flush=True)
+            time.sleep(poll)
 
-def _get_messages(task_id: str) -> list[dict]:
-    output = _run_elnora(["tasks", "messages", task_id])
-    data = json.loads(output)
-    return data.get("items", [])
+        print(f"    [elnora] Timeout after {timeout}s", flush=True)
+        return None
+    except Exception as e:
+        print(f"    [elnora] Error: {e}", flush=True)
+        return None
 
 
 def elnora_design(
@@ -64,16 +122,15 @@ Focus on EXPLOIT: tighten ranges around the best performers.
 
 Format as a markdown table: Condition | Base Media | Component1 | Component2 | Component3"""
 
-    task_data = _create_task(f"Round {round_number} experiment design", prompt)
-    task_id = task_data.get("id", "")
-    messages = _get_messages(task_id)
+    reply = query_elnora(prompt, title=f"Round {round_number} experiment design")
 
-    assistant_reply = ""
-    for msg in messages:
-        if msg.get("role") == "assistant":
-            assistant_reply = msg.get("content", "")
+    if not reply:
+        print(f"    [elnora] Design: empty — using BayBE-only fallback", flush=True)
+        reply = "Elnora did not return a response. Please proceed with BayBE proposals only."
+    else:
+        print(f"    [elnora] Design: got {len(reply)} chars", flush=True)
 
-    return {"task_id": task_id, "elnora_response": assistant_reply, "round": round_number}
+    return {"task_id": "", "elnora_response": reply, "round": round_number}
 
 
 def elnora_validate(conditions_table: str) -> dict:
@@ -92,13 +149,12 @@ def elnora_validate(conditions_table: str) -> dict:
 For each issue, specify which condition and what to change.
 If all safe, say "ALL CLEAR"."""
 
-    task_data = _create_task("Condition validation check", prompt)
-    task_id = task_data.get("id", "")
-    messages = _get_messages(task_id)
+    reply = query_elnora(prompt, title="Condition validation check")
 
-    assistant_reply = ""
-    for msg in messages:
-        if msg.get("role") == "assistant":
-            assistant_reply = msg.get("content", "")
+    if not reply:
+        print(f"    [elnora] Validate: empty — ALL CLEAR fallback", flush=True)
+        reply = "ALL CLEAR — Elnora did not flag any issues (empty response)."
+    else:
+        print(f"    [elnora] Validate: got {len(reply)} chars", flush=True)
 
-    return {"task_id": task_id, "validation_result": assistant_reply}
+    return {"task_id": "", "validation_result": reply}

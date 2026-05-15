@@ -38,6 +38,13 @@ ROUND_LABELS = {
     "round2": "Round 2",
 }
 
+# Round name → Monomer plate ID
+ROUND_PLATE_IDS = {
+    "seed_round": "PLT1RLOSUISCDIHOFWDWTLWCUPCOLQ",
+    "round1": "PLT1RQR2P5DESEEHSKOIUQCNAXH3RA",
+    "round2": "PLT145RIEW6K4ZTEUG4OOFQJQAXHL4",
+}
+
 # 96-well plate layout
 ROWS = list("ABCDEFGH")
 COLS = list(range(1, 13))
@@ -459,64 +466,64 @@ def main():
 
     # --- Tab 6: Orchestrator live log ---
     with tab_orchestrator:
+        # Launch button — outside fragment so clicks aren't lost
+        if st.button("🚀 Launch Closed Loop", type="primary", use_container_width=True):
+            import subprocess
+            project_root = Path(__file__).parent
+            monomer_plate_id = ROUND_PLATE_IDS.get(plate_id, plate_id)
+            # Write a temp script that Terminal.app will execute
+            tmp_script = project_root / ".run_loop.command"
+            tmp_script.write_text(
+                f"#!/bin/bash\ncd {project_root} && ./launch.sh {monomer_plate_id}\n"
+            )
+            tmp_script.chmod(0o755)
+            subprocess.Popen(["open", str(tmp_script)])
+            st.success("Terminal opened with Closed Loop!")
+
         @st.fragment(run_every="3s")
         def live_orchestrator_log():
-            placeholder = st.empty()
-            with placeholder.container():
-                log_data = _load_log()
-                if log_data is None:
-                    st.info("No orchestrator activity. Start the loop to see live updates.")
-                    if st.button("🚀 Launch Closed Loop", type="primary", use_container_width=True):
-                        import subprocess
-                        script = Path(__file__).parent / "POC" / "closed-loop" / "scripts" / "orchestrator.py"
-                        env = {**os.environ, "SIMULATION_MODE": "1", "AUTO_APPROVE": "1"}
-                        subprocess.Popen(
-                            [sys.executable, str(script), "--plate-id", plate_id, "--auto-approve"],
-                            env=env,
-                            cwd=str(Path(__file__).parent / "POC" / "closed-loop"),
-                        )
-                        st.success("Orchestrator launched! Log will appear shortly...")
-                        st.rerun()
-                    return
+            log_data = _load_log()
+            if log_data is None:
+                st.info("No orchestrator activity. Start the loop to see live updates.")
+                return
 
-                status = log_data.get("status", "unknown")
-                current_step = log_data.get("current_step", "idle")
-                log_entries = log_data.get("log", [])
+            status = log_data.get("status", "unknown")
+            current_step = log_data.get("current_step", "idle")
+            log_entries = log_data.get("log", [])
 
-                # Pipeline step icons
-                step_icons = {
-                    "init": "🚀", "fetch_results": "📥", "analyze_results": "📊",
-                    "baybe_propose": "🧠", "elnora_design": "🔬", "elnora_validate": "✅",
-                    "compile_protocol": "⚗️", "monomer_submit": "🤖", "check_convergence": "🎯",
-                    "check_precipitation": "⚠️", "done": "✅",
-                }
+            step_icons = {
+                "init": "🚀", "fetch_results": "📥", "analyze_results": "📊",
+                "baybe_propose": "🧠", "elnora_design": "🔬", "elnora_validate": "✅",
+                "compile_protocol": "⚗️", "monomer_submit": "🤖", "check_convergence": "🎯",
+                "check_precipitation": "⚠️", "done": "✅",
+            }
 
-                st_state = "running" if status == "running" else "complete"
-                step_label = log_data.get("log", [{}])[-1].get("label", current_step) if log_entries else current_step
+            st_state = "running" if status == "running" else "complete"
+            step_label = log_data.get("log", [{}])[-1].get("label", current_step) if log_entries else current_step
 
-                with st.status(
-                    f"Orchestrator: {step_label}",
-                    state=st_state,
-                    expanded=True,
-                ):
-                    for entry in log_entries:
-                        icon = step_icons.get(entry.get("step", "").replace("_done", ""), "▶")
-                        detail = entry.get("detail", "")
-                        step = entry.get("step", "")
+            with st.status(
+                f"Orchestrator: {step_label}",
+                state=st_state,
+                expanded=True,
+            ):
+                for entry in log_entries:
+                    icon = step_icons.get(entry.get("step", "").replace("_done", ""), "▶")
+                    detail = entry.get("detail", "")
+                    step = entry.get("step", "")
 
-                        if step.endswith("_done") and detail:
-                            st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ **{detail}**")
-                        else:
-                            label = entry.get("label", step)
-                            ts = entry.get("ts", "")
-                            time_str = ts[11:19] if len(ts) > 19 else ""
-                            st.markdown(f"{icon} `{time_str}` {label}")
+                    if step.endswith("_done") and detail:
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ **{detail}**")
+                    else:
+                        label = entry.get("label", step)
+                        ts = entry.get("ts", "")
+                        time_str = ts[11:19] if len(ts) > 19 else ""
+                        st.markdown(f"{icon} `{time_str}` {label}")
 
-                    if status == "complete":
-                        summary = log_data.get("summary", "")
-                        if summary:
-                            st.divider()
-                            st.markdown(summary)
+                if status == "complete":
+                    summary = log_data.get("summary", "")
+                    if summary:
+                        st.divider()
+                        st.markdown(summary)
 
         live_orchestrator_log()
 
